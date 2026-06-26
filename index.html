@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>BMS v5 — TH. Ống Mai Dịch Vụ · Chị Kim Thoa</title>
 <style>
 
@@ -13,7 +13,7 @@
   --ac:#00e5ff;--ac2:#ff4d1a;--ac3:#00ff88;--ac4:#ffcc00;--ac5:#b06cff;--ac6:#ff6eb0;
   --tx:#7ab0d0;--txb:#c8e8ff;--txc:#e8f8ff;--txd:#254060;--txe:#1a2e48;
   --ok:#00dd66;--warn:#ff9900;--err:#ff2255;--info:#0099ff;
-  --ff:'Segoe UI','Arial',sans-serif;--fm:'Segoe UI','Arial',sans-serif;--fmo:'Consolas','Courier New',monospace;
+  --ff:-apple-system,'Segoe UI','Helvetica Neue',Arial,sans-serif;--fm:-apple-system,'Segoe UI','Helvetica Neue',Arial,sans-serif;--fmo:'Consolas','SF Mono','Fira Code','Cascadia Code','Courier New',monospace;
   --r4:4px;--r6:6px;--r8:8px;
   --sh0:0 2px 8px rgba(0,0,0,.5);
   --sh1:0 0 20px rgba(0,229,255,.04);
@@ -1188,19 +1188,16 @@ body{font-family:var(--ff);color:var(--tx);display:flex;flex-direction:column;
 }
 .tab.on .tab-kbd,.tab:hover .tab-kbd{color:rgba(0,229,255,.6);}
 </style>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ══ BMS VISUAL UPGRADE ══════════════════════════════════════════
-   Font mới, màu sắc phong phú hơn, card đẹp hơn, responsive
+   Font hệ thống — không cần internet, không bao giờ lỗi
 ══════════════════════════════════════════════════════════════════ */
 
 /* ── FONT & ROOT VARIABLES ───────────────────────── */
 :root {
-  --ff:'IBM Plex Sans','Segoe UI',sans-serif;
-  --fm:'IBM Plex Sans','Segoe UI',sans-serif;
-  --fmo:'IBM Plex Mono','Consolas',monospace;
+  --ff:-apple-system,'Segoe UI','Helvetica Neue',Arial,sans-serif;
+  --fm:-apple-system,'Segoe UI','Helvetica Neue',Arial,sans-serif;
+  --fmo:'Consolas','SF Mono','Fira Code','Cascadia Code','Courier New',monospace;
   --bg0:#010c1a; --bg1:#02101f; --bg2:#051829; --bg3:#081f35; --bg4:#0c2540;
   --bd0:#0f2236; --bd1:#183a58; --bd2:#1f4f78; --bd3:#2e6898;
   --glow-ac:0 0 16px rgba(0,229,255,.35);
@@ -1812,7 +1809,7 @@ body {
       </div>
       <div class="fp-controls">
         <button class="btn" onclick="allLights()">💡 Tất cả đèn</button>
-        <button class="btn" onclick="allAC()">❄ Tất cả AC</button>
+        <button class="btn" onclick="allAC()">❄ Tất cả điều hòa</button>
         <button class="btn" onclick="toggleHeatMap()" id="heatBtn">🌡 Bản đồ nhiệt</button>
         <button class="btn err" id="cbBtn" onclick="toggleCB()">⚡ CB: BẬT</button>
       </div>
@@ -2596,139 +2593,188 @@ function reportTrackCB(){ REPORT_TRACK.cbTrips++; }
 // ══════════════════════════════════════════════════════════════════
 // FIRE ALARM AUDIO ENGINE
 const FireAudio = (() => {
-  let ctx = null;          // AudioContext
-  let masterGain = null;   // nút âm lượng tổng
-  let loopTimer = null;    // setInterval điều khiển chu kỳ còi
+  let ctx = null;
+  let masterGain = null;
+  let reverbNode = null;
+  let reverbGain = null;
   let isPlaying = false;
-  let phase = 0;           // 0 = tông cao, 1 = tông thấp
-  let currentNodes = [];   // các oscillator đang chạy
+  let _schedTimer = null;
+  let _nextT = 0;
+  let _count = 0;
 
   function getCtx() {
     if (!ctx) {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
+
       masterGain = ctx.createGain();
-      masterGain.gain.value = 0.55;
+      masterGain.gain.value = 0.9;
+
+      // Reverb — tiếng vang phòng (hành lang tòa nhà)
+      const len = Math.floor(ctx.sampleRate * 1.8);
+      const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let c = 0; c < 2; c++) {
+        const d = buf.getChannelData(c);
+        for (let i = 0; i < len; i++)
+          d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.8) * 0.5;
+      }
+      reverbNode = ctx.createConvolver();
+      reverbNode.buffer = buf;
+      reverbGain = ctx.createGain();
+      reverbGain.gain.value = 0.45; // độ vang 45%
+
+      // Routing: masterGain → dry (destination) + wet (reverb → destination)
       masterGain.connect(ctx.destination);
+      masterGain.connect(reverbNode);
+      reverbNode.connect(reverbGain);
+      reverbGain.connect(ctx.destination);
     }
-    // Resume nếu bị suspend (browser policy)
     if (ctx.state === 'suspended') ctx.resume();
     return ctx;
   }
 
-  // Tạo 1 burst còi ngắn (tông đơn + vibrato nhẹ)
-  function playBurst(freq, duration, fadeIn, fadeOut) {
+  // ═══════════════════════════════════════════════════════════════
+  // FM BELL SYNTHESIS — chuẩn Chowning (1973)
+  // 2-operator FM: Carrier * sin(Modulator)
+  // Tỉ lệ C:M = 1:1.4 → âm sắc chuông kim loại đặc trưng
+  //
+  // Mỗi tiếng "ding":
+  //   - Attack: 2ms (búa chạm)
+  //   - Decay: dài ~1.5s (chuông rung tắt dần)
+  //   - Modulation index giảm nhanh → âm sắc sáng → tối dần
+  // ═══════════════════════════════════════════════════════════════
+  function ding(t, freq, vol) {
+    const ac = getCtx();
+    const decayT = 1.4; // giây — thời gian tắt dần của chuông
+
+    // === OPERATOR 2 — Modulator ===
+    const mod = ac.createOscillator();
+    mod.type = 'sine';
+    mod.frequency.value = freq * 1.4; // tỉ lệ C:M = 1:1.4
+
+    // Modulation Index: cao lúc đầu (âm sắc sáng, chói) → giảm nhanh
+    const modGain = ac.createGain();
+    modGain.gain.setValueAtTime(freq * 8, t);             // index 8 lúc đầu
+    modGain.gain.exponentialRampToValueAtTime(freq * 0.1, t + decayT * 0.4);
+    modGain.gain.exponentialRampToValueAtTime(0.001, t + decayT);
+
+    // === OPERATOR 1 — Carrier ===
+    const car = ac.createOscillator();
+    car.type = 'sine';
+    car.frequency.value = freq;
+
+    // Carrier amplitude envelope
+    const carGain = ac.createGain();
+    carGain.gain.setValueAtTime(0, t);
+    carGain.gain.linearRampToValueAtTime(vol, t + 0.002);           // attack 2ms
+    carGain.gain.exponentialRampToValueAtTime(vol * 0.6, t + 0.05); // chớp sáng
+    carGain.gain.exponentialRampToValueAtTime(0.0001, t + decayT);  // tắt dần
+
+    // === 2nd bell layer — tần số cao hơn 1 chút (beating = "rung") ===
+    const car2 = ac.createOscillator();
+    car2.type = 'sine';
+    car2.frequency.value = freq * 2.756; // partial thứ 2 của chuông thật
+
+    const carGain2 = ac.createGain();
+    carGain2.gain.setValueAtTime(0, t);
+    carGain2.gain.linearRampToValueAtTime(vol * 0.35, t + 0.002);
+    carGain2.gain.exponentialRampToValueAtTime(0.0001, t + decayT * 0.5);
+
+    // === Routing ===
+    mod.connect(modGain);
+    modGain.connect(car.frequency); // FM: modulator → carrier frequency
+    car.connect(carGain);
+    carGain.connect(masterGain);
+
+    car2.connect(carGain2);
+    carGain2.connect(masterGain);
+
+    // === Start / stop ===
+    const endT = t + decayT + 0.05;
+    mod.start(t);   mod.stop(endT);
+    car.start(t);   car.stop(endT);
+    car2.start(t);  car2.stop(endT);
+
+    setTimeout(() => {
+      [mod, car, car2, modGain, carGain, carGain2].forEach(n => {
+        try { n.disconnect(); } catch(e) {}
+      });
+    }, (endT - ac.currentTime + 0.3) * 1000);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Lịch đánh chuông — đều đặn, to, vang
+  // Tần số chuông thay đổi nhẹ giữa hai mức tạo cảm giác
+  // chuông đôi (như chuông báo cháy thực tế ở các tòa nhà VN)
+  //   DING (880Hz) ... DONG (660Hz) ... DING ... DONG ...
+  // Tốc độ: bắt đầu 1.5/s, tăng lên 2.2/s
+  // ═══════════════════════════════════════════════════════════════
+  function getInterval() {
+    // Tăng tốc dần trong 20 nhịp đầu
+    const t = Math.min(_count / 20, 1);
+    return 0.55 - t * 0.17; // 0.55s → 0.38s
+  }
+
+  const LOOKAHEAD  = 0.8;
+  const SCHED_MS   = 60;
+
+  function schedule() {
+    if (!isPlaying) return;
     const ac = getCtx();
     const now = ac.currentTime;
 
-    // Oscillator chính
-    const osc = ac.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.value = freq;
-
-    // LFO tạo rung (wobble) — đặc trưng còi PCCC
-    const lfo = ac.createOscillator();
-    lfo.type = 'sine';
-    lfo.frequency.value = 6;          // rung 6 Hz
-    const lfoGain = ac.createGain();
-    lfoGain.gain.value = 18;          // biên độ rung ±18 Hz
-    lfo.connect(lfoGain);
-    lfoGain.connect(osc.frequency);
-
-    // Envelope gain (fade in / out)
-    const env = ac.createGain();
-    env.gain.setValueAtTime(0, now);
-    env.gain.linearRampToValueAtTime(1, now + fadeIn);
-    env.gain.setValueAtTime(1, now + duration - fadeOut);
-    env.gain.linearRampToValueAtTime(0, now + duration);
-
-    // Bộ lọc (bandpass) cho âm sắc còi siren
-    const filter = ac.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.value = freq;
-    filter.Q.value = 0.8;
-
-    osc.connect(filter);
-    filter.connect(env);
-    env.connect(masterGain);
-
-    osc.start(now);
-    lfo.start(now);
-    osc.stop(now + duration);
-    lfo.stop(now + duration);
-
-    currentNodes.push(osc, lfo);
-    return duration * 1000;
-  }
-
-  // Chu kỳ còi: HIGH (800Hz 0.5s) → LOW (600Hz 0.5s) → nghỉ (0.15s) → lặp lại
-  // Chuẩn EN54 whoop-whoop
-  function runCycle() {
-    if (!isPlaying) return;
-    if (phase === 0) {
-      playBurst(820, 0.5, 0.04, 0.06);   // tông cao
-      phase = 1;
-      loopTimer = setTimeout(runCycle, 480);
-    } else if (phase === 1) {
-      playBurst(620, 0.5, 0.04, 0.06);   // tông thấp
-      phase = 2;
-      loopTimer = setTimeout(runCycle, 480);
-    } else {
-      phase = 0;
-      loopTimer = setTimeout(runCycle, 150); // nghỉ ngắn giữa 2 chu kỳ
+    while (_nextT < now + LOOKAHEAD) {
+      // Luân phiên DING (cao) - DONG (thấp) như chuông đôi thật
+      const isDing = (_count % 2 === 0);
+      const freq   = isDing ? 880 : 660;
+      const vol    = isDing ? 1.0 : 0.78;
+      ding(_nextT, freq, vol);
+      _nextT += getInterval();
+      _count++;
     }
+    _schedTimer = setTimeout(schedule, SCHED_MS);
   }
 
   function start() {
     if (isPlaying) return;
     isPlaying = true;
-    phase = 0;
-    currentNodes = [];
-    runCycle();
+    _count = 0;
+    const ac = getCtx();
+    _nextT = ac.currentTime + 0.05;
+    schedule();
   }
 
   function stop() {
     if (!isPlaying) return;
     isPlaying = false;
-    clearTimeout(loopTimer);
-    loopTimer = null;
-    // Dừng ngay tất cả node đang chạy
-    currentNodes.forEach(n => { try { n.stop(); } catch(e){} });
-    currentNodes = [];
-    // Fade out nhanh master gain để tránh click âm
+    clearTimeout(_schedTimer);
+    _schedTimer = null;
     if (masterGain && ctx) {
       const now = ctx.currentTime;
+      masterGain.gain.cancelScheduledValues(now);
       masterGain.gain.setValueAtTime(masterGain.gain.value, now);
-      masterGain.gain.linearRampToValueAtTime(0, now + 0.08);
-      setTimeout(() => {
-        if (!isPlaying && masterGain) masterGain.gain.value = 0.55;
-      }, 150);
+      masterGain.gain.linearRampToValueAtTime(0, now + 0.2);
+      setTimeout(() => { if (!isPlaying && masterGain) masterGain.gain.value = 0.9; }, 400);
     }
   }
 
-  // Test ngắn: 3 tiếng bíp xác nhận hệ thống hoạt động
   function test() {
     const ac = getCtx();
-    [0, 0.22, 0.44].forEach(delay => {
-      const osc = ac.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.value = 1050;
-      const env = ac.createGain();
-      env.gain.setValueAtTime(0, ac.currentTime + delay);
-      env.gain.linearRampToValueAtTime(0.4, ac.currentTime + delay + 0.02);
-      env.gain.setValueAtTime(0.4, ac.currentTime + delay + 0.14);
-      env.gain.linearRampToValueAtTime(0, ac.currentTime + delay + 0.18);
-      osc.connect(env);
-      env.connect(ac.destination);
-      osc.start(ac.currentTime + delay);
-      osc.stop(ac.currentTime + delay + 0.2);
-    });
+    const t = ac.currentTime + 0.05;
+    ding(t,        880, 1.0);
+    ding(t + 0.45, 660, 0.78);
+    ding(t + 0.90, 880, 1.0);
   }
 
   function setVolume(v) {
-    if (masterGain) masterGain.gain.value = Math.max(0, Math.min(1, v));
+    if (masterGain && ctx) {
+      const now = ctx.currentTime;
+      masterGain.gain.cancelScheduledValues(now);
+      masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+      masterGain.gain.linearRampToValueAtTime(Math.max(0, Math.min(1, v)), now + 0.05);
+    }
   }
 
-  return { start, stop, test, setVolume, get playing(){ return isPlaying; } };
+  return { start, stop, test, setVolume, get playing() { return isPlaying; } };
 })();
 function tick(){
   const n=new Date();
@@ -3155,7 +3201,7 @@ function renderOverview(){
         </div>
         <div class="bfl-right">
           ${litn>0?`<div class="bfl-stat"><div class="bfl-stat-num" style="color:var(--ac4)">💡${litn}</div><div class="bfl-stat-lbl">Đèn</div></div>`:''}
-          ${acn>0?`<div class="bfl-stat"><div class="bfl-stat-num" style="color:var(--ac)">❄${acn}</div><div class="bfl-stat-lbl">AC</div></div>`:''}
+          ${acn>0?`<div class="bfl-stat"><div class="bfl-stat-num" style="color:var(--ac)">❄${acn}</div><div class="bfl-stat-lbl">ĐH</div></div>`:''}
           ${camOn>0?`<div class="bfl-stat"><div class="bfl-stat-num" style="color:var(--ac2)">📷${camOn}</div><div class="bfl-stat-lbl">Cam</div></div>`:''}
           <span class="bfl-cb-badge ${cbOn?'on':'off'}">${cbOn?'ON':'OFF'}</span>
         </div>
@@ -3296,7 +3342,7 @@ function renderFloorPlan(){
         </div>
         <div class="rc-btns">
           <span class="rc-btn l ${lit?'on':''}" onclick="toggleLight('${r.id}','${f.id}')">💡 ${lit?'TẮT':'BẬT'} đèn</span>
-          ${r.ac?`<span class="rc-btn a ${cold?'on':''}" onclick="toggleAC('${r.id}','${f.id}')">❄ ${cold?'Tắt AC':'Bật AC'}</span>`:''}
+          ${r.ac?`<span class="rc-btn a ${cold?'on':''}" onclick="toggleAC('${r.id}','${f.id}')">❄ ${cold?'Tắt điều hòa':'Bật điều hòa'}</span>`:''}
           <span class="rc-btn info">${r.circ} mạch</span>
         </div>
       </div>`;
@@ -3557,7 +3603,7 @@ function renderAC(){
     <div style="background:linear-gradient(135deg,rgba(255,153,0,.08),rgba(255,153,0,.03));border:1px solid rgba(255,153,0,.2);border-radius:12px;padding:14px;text-align:center">
       <div style="font-size:28px;font-weight:800;color:var(--warn)">${totalPower}</div>
       <div style="font-size:10px;color:var(--txd);margin-top:4px;font-weight:600">kW TẢI</div>
-      <div style="font-size:9px;color:var(--txe);margin-top:2px">điện tiêu thụ AC</div>
+      <div style="font-size:9px;color:var(--txe);margin-top:2px">điện tiêu thụ điều hòa</div>
     </div>
     <div style="background:linear-gradient(135deg,rgba(0,255,136,.06),rgba(0,255,136,.02));border:1px solid rgba(0,255,136,.15);border-radius:12px;padding:14px;text-align:center">
       <div style="font-size:28px;font-weight:800;color:var(--ok)">9</div>
@@ -5414,7 +5460,7 @@ function allAC(){
   if(!S.breakers[f.id]){log('warn','⚠ CB đang tắt!');return;}
   const any=f.rooms.some(r=>S.ac[r.id]);
   f.rooms.forEach(r=>{if(r.ac)S.ac[r.id]=!any;});
-  log('info',`${f.label}: Tất cả AC ${!any?'❄ BẬT':'— TẮT'}`);
+  log('info',`${f.label}: Tất cả điều hòa ${!any?'❄ BẬT':'— TẮT'}`);
   render();
 }
 
@@ -5496,6 +5542,8 @@ function setACTemp(uid,t){
 }
 
 let _elevIv=null,_elevTo=null;
+// Tốc độ thực tế: ~3.5s/tầng (VFD 22kW, 1m/s, tầng cao 3.3m + gia tốc/hãm)
+const ELEV_MS_PER_FLOOR = 3500;
 function goElev(floor,lbl,force){
   if(S.elevMoving){
     if(!force)return;
@@ -5508,29 +5556,34 @@ function goElev(floor,lbl,force){
   document.getElementById('si-el-dot').className='si-dot dot-o';
   const elSt=document.getElementById('elevSt');
   if(elSt){elSt.textContent='CHẠY';elSt.className='ns idle';}
-  log('info',`🛗 Thang máy: T${from} → ${lbl} (${Math.abs(floor-from)} tầng)`);
-  const etaEl=document.getElementById('elev-eta');
-  if(etaEl) etaEl.textContent=`ETA: ~${Math.abs(floor-from)*2}s`;
   const steps=Math.abs(floor-from);
+  const totalMs=steps*ELEV_MS_PER_FLOOR;
+  log('info',`🛗 Thang máy: T${from} → ${lbl} (${steps} tầng · ~${Math.round(totalMs/1000)}s)`);
+  const etaEl=document.getElementById('elev-eta');
+  if(etaEl) etaEl.textContent=`ETA: ~${Math.round(totalMs/1000)}s`;
   let cur=from;
   _elevIv=setInterval(()=>{
     if(cur===floor){clearInterval(_elevIv);return;}
     cur+=cur<floor?1:-1;
     const posEl=document.getElementById('elevPos');
-    if(posEl)posEl.textContent=`T${cur} đang đi...`;
+    if(posEl)posEl.textContent=`${cur<floor?'↑':'↓'} Đang đến tầng ${cur}...`;
+    // cập nhật ETA còn lại
+    const rem=Math.abs(floor-cur);
+    if(etaEl) etaEl.textContent=`ETA: ~${Math.round(rem*ELEV_MS_PER_FLOOR/1000)}s`;
     S.elevFloor=cur;renderElevBtns();
-  },500);
+  },ELEV_MS_PER_FLOOR);
   _elevTo=setTimeout(()=>{
     S.elevFloor=floor;S.elevMoving=false;
     const posEl=document.getElementById('elevPos');
     if(posEl)posEl.textContent=lbl;
     if(elSt){elSt.textContent='CHỜ';elSt.className='ns up';}
+    if(etaEl) etaEl.textContent='Sẵn sàng';
     document.getElementById('si-elev').textContent='CHỜ';
     document.getElementById('si-el-dot').className='si-dot dot-g';
     log('ok',`🛗 Thang máy đã đến ${lbl}`);
-    reportTrackElevTrip(steps*500);
+    reportTrackElevTrip(totalMs);
     renderElevBtns();calcPower();
-  },steps*500);
+  },totalMs);
 }
 
 // Gọi tầng thủ công (qua nút bấm) — chặn nếu thang máy đang khóa ở chế độ khẩn cấp PCCC
@@ -5953,7 +6006,7 @@ function allBuildingAC(on){
     if(!S.breakers[f.id])return;
     f.rooms.forEach(r=>{if(r.ac)S.ac[r.id]=on;});
   });
-  log('info',`🏢 Toàn nhà: Tất cả AC ${on?'❄ BẬT':'— TẮT'}`);
+  log('info',`🏢 Toàn nhà: Tất cả điều hòa ${on?'❄ BẬT':'— TẮT'}`);
   render();
 }
 function allBuildingCB(on){
@@ -8503,6 +8556,212 @@ button:focus-visible, [tabindex]:focus-visible {
   .cam-grid { grid-template-columns: 1fr 1fr !important; }
   #mobile-bottom-bar { display: none !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE OPTIMIZATION — TẤT CẢ TAB (max-width: 768px)
+   Bao gồm: Báo cháy · Cửa cuốn · Báo cáo + cải thiện chung
+══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ── BÁO CHÁY TAB ── */
+  .fire-wrap {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto 1fr !important;
+    overflow-y: auto !important;
+  }
+  .fire-floors {
+    border-right: none !important;
+    border-bottom: 1px solid var(--bd0);
+    max-height: 200px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .fire-floor-row {
+    padding: 10px 14px !important;
+    min-height: 48px !important;
+    touch-action: manipulation;
+  }
+  .fire-fl-num { font-size: 12px !important; }
+  .fire-fl-name { font-size: 11px !important; }
+  .fire-fl-sub { font-size: 8px !important; }
+  .fire-detail { min-height: 0; }
+  .fire-detail-head { padding: 12px 14px 10px !important; }
+  .fire-detail-body { padding: 10px 14px !important; }
+  .fire-dev-card {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+  }
+  .fire-dev-info { flex: 1 1 100% !important; order: 2; }
+  .fire-dev-icon { order: 1; }
+  .fire-dev-btns {
+    flex: 1 1 100% !important;
+    order: 3;
+    justify-content: flex-end;
+  }
+  .fire-dev-status { order: 0; }
+  .fire-btn-alarm, .fire-btn-ok, .fire-btn-fault {
+    min-height: 36px !important;
+    font-size: 11px !important;
+    padding: 6px 12px !important;
+    touch-action: manipulation;
+  }
+  .fire-elev-strip {
+    margin: 8px 12px 0 !important;
+    padding: 10px 12px !important;
+  }
+
+  /* ── CỬA CUỐN TAB ── */
+  #shutterTab > div {
+    padding: 12px !important;
+    gap: 12px !important;
+  }
+  /* Layout cửa cuốn: stack dọc trên mobile */
+  #shutterTab > div > div[style*="grid-template-columns:200px"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+  /* SVG cửa cuốn: nhỏ lại */
+  #shutterTab svg[width="170"] {
+    width: 120px !important;
+    height: 185px !important;
+  }
+  /* Hình + % đặt ngang */
+  #shutterTab > div > div > div:first-child {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 16px !important;
+  }
+  /* 3 nút điều khiển MỞ/DỪNG/ĐÓNG */
+  #shutterTab button[style*="font-size:28px"],
+  #shutterTab button[style*="font-size:22px"] {
+    min-height: 52px !important;
+    font-size: 20px !important;
+    padding: 8px 4px !important;
+    touch-action: manipulation;
+  }
+  /* Preset nhanh: 5 nút 1 hàng cuộn */
+  #shutterTab div[style*="grid-template-columns:repeat(5,1fr)"] {
+    display: flex !important;
+    overflow-x: auto !important;
+    gap: 6px !important;
+    padding-bottom: 4px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+  #shutterTab div[style*="grid-template-columns:repeat(5,1fr)"] button {
+    flex-shrink: 0 !important;
+    min-width: 60px !important;
+    min-height: 40px !important;
+    font-size: 10px !important;
+    touch-action: manipulation;
+  }
+  /* Cột phải công suất + thông số: full width */
+  #shutterTab > div > div > div:last-child {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  /* Lịch sử cửa cuốn */
+  #shutterTab > div > div[style*="max-height:110px"] {
+    max-height: 90px !important;
+  }
+
+  /* ── BÁO CÁO TAB ── */
+  #reportTab > div {
+    padding: 12px !important;
+    gap: 12px !important;
+  }
+  /* KPI 4 ô → 2 cột */
+  #reportTab > div > div[style*="grid-template-columns:repeat(4"] {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  /* Biểu đồ công suất — giảm chiều cao */
+  #reportTab svg { height: 110px !important; }
+  /* 2 bảng dưới → stack dọc */
+  #reportTab > div > div[style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  /* KPI card font nhỏ hơn */
+  #reportTab div[style*="font-size:30px"] { font-size: 22px !important; }
+  #reportTab div[style*="font-size:22px"] { font-size: 17px !important; }
+  #reportTab div[style*="font-size:9px"] { font-size: 9px !important; }
+  /* Nút xuất PDF full width */
+  #reportTab button[onclick*="exportReportPDF"] {
+    padding: 10px 14px !important;
+    font-size: 12px !important;
+    min-height: 40px !important;
+    touch-action: manipulation;
+  }
+  /* Bảng tiền điện: font nhỏ */
+  #reportTab table { font-size: 9px !important; }
+  #reportTab th, #reportTab td { padding: 5px 4px !important; font-size: 9px !important; }
+  /* Row chi tiết vận hành */
+  #reportTab div[style*="gap:7px"] > div { padding: 5px 8px !important; }
+
+  /* ── BOTTOM BAR: cập nhật thứ tự icon ── */
+  #mobile-bottom-bar { height: 46px !important; }
+
+  /* ── SAFE AREA (notch/home bar iPhone) ── */
+  #mobile-bottom-bar {
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    height: calc(46px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #bms-toasts {
+    bottom: calc(54px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .tabbar {
+    padding-left: env(safe-area-inset-left, 6px) !important;
+    padding-right: env(safe-area-inset-right, 6px) !important;
+  }
+
+  /* ── SCROLL PERFORMANCE ── */
+  .tab-pane, .fire-detail-body, .fire-floors,
+  #shutterTab, #reportTab, #fireTab {
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
+  }
+
+  /* ── TOUCH TARGETS tất cả nút tối thiểu 44px ── */
+  button, .btn, .ebtn, .tgl, .rc-btn, .qc-btn,
+  .fire-btn-alarm, .fire-btn-ok, .fire-btn-fault,
+  .fire-floor-row, .fl-item {
+    touch-action: manipulation !important;
+  }
+
+  /* ── RANGE INPUT (slider cửa cuốn + volume) ── */
+  input[type=range] {
+    height: 28px !important;
+    cursor: pointer;
+    touch-action: pan-x !important;
+  }
+
+  /* ── THANG MÁY: nút ebtn to hơn ── */
+  .ebtn {
+    min-width: 36px !important;
+    min-height: 36px !important;
+    font-size: 10px !important;
+    touch-action: manipulation !important;
+  }
+
+  /* ── FIRE ALARM: banner to hơn ── */
+  #fireTab > div[style*="animation:fire-pulse"] {
+    padding: 12px !important;
+  }
+  #fireTab button[onclick*="silenceFireAlarm"],
+  #fireTab button[onclick*="resetFireSystem"],
+  #fireTab button[onclick*="testFireSystem"] {
+    min-height: 38px !important;
+    font-size: 11px !important;
+    padding: 8px 12px !important;
+    touch-action: manipulation;
+  }
+
+  /* ── TICKER ẩn trên mobile ── */
+  .ticker-wrap { display: none !important; }
+}
 </style>
 <!-- ══ UX ADDITIONS ══ -->
 
@@ -8744,7 +9003,7 @@ allBuildingLights = function(on){
 const _origABAC = allBuildingAC;
 allBuildingAC = function(on){
   _origABAC(on);
-  bmsToast('Toàn nhà — AC: ' + (on?'BẬT tất cả':'TẮT tất cả'), on?'ok':'inf', '❄️');
+  bmsToast('Toàn nhà — Điều hòa: ' + (on?'BẬT tất cả':'TẮT tất cả'), on?'ok':'inf', '❄️');
 };
 const _origABCB = allBuildingCB;
 allBuildingCB = function(on){
@@ -9418,5 +9677,321 @@ updateEnergyDisplay = function(){
     if(costEl && mbbCost) mbbCost.textContent = costEl.textContent;
   }
 };
+</script>
+
+<style>
+/* ══════════════════════════════════════════════════════
+   MOBILE APP DESIGN — Chỉ áp dụng ≤ 768px
+   Thiết kế native app: bottom nav + card layout
+══════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* Ẩn tabbar desktop, dùng bottom nav thay thế */
+  #main-tabbar { display: none !important; }
+
+  /* Bottom Navigation Bar — như app iOS/Android */
+  #mob-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 8000;
+    height: 56px;
+    background: rgba(2,8,20,.97);
+    border-top: 1px solid rgba(0,229,255,.12);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding-bottom: env(safe-area-inset-bottom,0);
+    box-shadow: 0 -4px 24px rgba(0,0,0,.6);
+  }
+  .mob-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    touch-action: manipulation;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity .15s;
+  }
+  .mob-nav-item:active { opacity: .6; }
+  .mob-nav-icon { font-size: 20px; line-height: 1; }
+  .mob-nav-lbl {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    color: rgba(120,160,210,.5);
+    font-family: var(--ff);
+  }
+  .mob-nav-item.active .mob-nav-lbl { color: var(--ac); }
+  .mob-nav-item.active .mob-nav-icon { filter: drop-shadow(0 0 5px var(--ac)); }
+  /* Chấm active indicator */
+  .mob-nav-item.active::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    width: 20px; height: 2px;
+    border-radius: 2px;
+    background: var(--ac);
+    box-shadow: 0 0 8px var(--ac);
+  }
+  /* Alert badge (báo cháy) */
+  .mob-nav-badge {
+    position: absolute;
+    top: 6px; right: calc(50% - 18px);
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--err);
+    box-shadow: 0 0 6px var(--err);
+    animation: fire-blink .8s infinite;
+    display: none;
+  }
+  .mob-nav-badge.show { display: block; }
+
+  /* "More" sheet */
+  #mob-more-sheet {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 7900;
+  }
+  #mob-more-sheet.show { display: block; }
+  #mob-more-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.6);
+    backdrop-filter: blur(4px);
+  }
+  #mob-more-panel {
+    position: absolute;
+    bottom: calc(56px + env(safe-area-inset-bottom,0px));
+    left: 0; right: 0;
+    background: rgba(4,12,28,.97);
+    border-top: 1px solid rgba(0,229,255,.15);
+    border-radius: 16px 16px 0 0;
+    padding: 12px 16px 16px;
+  }
+  .mob-more-handle {
+    width: 36px; height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,.15);
+    margin: 0 auto 14px;
+  }
+  .mob-more-title {
+    font-size: 10px;
+    font-family: var(--fmo);
+    color: var(--txe);
+    letter-spacing: 1px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .mob-more-grid {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    gap: 8px;
+  }
+  .mob-more-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 12px 6px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.07);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mob-more-btn.active {
+    background: rgba(0,229,255,.1);
+    border-color: rgba(0,229,255,.3);
+  }
+  .mob-more-btn:active { opacity: .6; }
+  .mob-more-ico { font-size: 22px; }
+  .mob-more-lbl { font-size: 9px; font-weight: 700; color: var(--txd); text-align: center; }
+  .mob-more-btn.active .mob-more-lbl { color: var(--ac); }
+
+  /* Đẩy nội dung lên tránh bottom nav */
+  .center {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom,0px)) !important;
+  }
+
+  /* Topbar gọn hơn */
+  .topbar {
+    height: 48px !important;
+    padding: 0 10px 0 52px !important;
+  }
+  .tb-center { display: none !important; }
+  .clk { font-size: 13px !important; }
+  .clk-date { display: none !important; }
+  .vdiv { display: none !important; }
+
+  /* Tab pane: full height, smooth scroll */
+  .tab-pane.on {
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
+  }
+
+  /* Override bottom-bar cũ (ẩn đi) */
+  #mobile-bottom-bar { display: none !important; }
+}
+
+@media (min-width: 769px) {
+  #mob-nav { display: none !important; }
+  #mob-more-sheet { display: none !important; }
+}
+</style>
+
+<script>
+(function(){
+  if(window.innerWidth > 768) return;
+
+  // ── Inject bottom nav HTML ──
+  const NAV_TABS = [
+    {id:'overview',  icon:'🏗', lbl:'Tổng quan'},
+    {id:'floorplan', icon:'📐', lbl:'Mặt bằng'},
+    {id:'fire',      icon:'🔥', lbl:'Báo cháy', badge:true},
+    {id:'power',     icon:'⚡', lbl:'Điện'},
+    {id:'_more',     icon:'••', lbl:'Thêm'},
+  ];
+  // Các tab trong "More"
+  const MORE_TABS = [
+    {id:'ac',      icon:'❄',  lbl:'Điều hòa'},
+    {id:'network', icon:'🌐', lbl:'Mạng'},
+    {id:'shutter', icon:'🚪', lbl:'Cửa cuốn'},
+    {id:'report',  icon:'📊', lbl:'Báo cáo'},
+    {id:'info',    icon:'🏢', lbl:'Thông tin'},
+    {id:'qty',     icon:'📋', lbl:'Khối lượng'},
+    {id:'facade',  icon:'🎨', lbl:'Mặt đứng'},
+  ];
+
+  // Tạo bottom nav
+  const nav = document.createElement('div');
+  nav.id = 'mob-nav';
+  nav.innerHTML = NAV_TABS.map(t => `
+    <div class="mob-nav-item${t.id === 'overview' ? ' active':''}"
+         data-tab="${t.id}" onclick="mobNavTap('${t.id}')">
+      ${t.badge ? `<span class="mob-nav-badge" id="mob-badge-fire"></span>` : ''}
+      <span class="mob-nav-icon">${t.icon}</span>
+      <span class="mob-nav-lbl">${t.lbl}</span>
+    </div>
+  `).join('');
+  document.body.appendChild(nav);
+
+  // Tạo "More" sheet
+  const sheet = document.createElement('div');
+  sheet.id = 'mob-more-sheet';
+  sheet.innerHTML = `
+    <div id="mob-more-overlay" onclick="mobMoreClose()"></div>
+    <div id="mob-more-panel">
+      <div class="mob-more-handle"></div>
+      <div class="mob-more-title">TẤT CẢ CHỨC NĂNG</div>
+      <div class="mob-more-grid">
+        ${MORE_TABS.map(t=>`
+          <div class="mob-more-btn" data-tab="${t.id}" onclick="mobMoreTap('${t.id}')">
+            <span class="mob-more-ico">${t.icon}</span>
+            <span class="mob-more-lbl">${t.lbl}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  document.body.appendChild(sheet);
+
+  // ── Tap bottom nav ──
+  window.mobNavTap = function(tabId){
+    if(tabId === '_more'){
+      mobMoreOpen(); return;
+    }
+    // Cập nhật active state
+    document.querySelectorAll('#mob-nav .mob-nav-item').forEach(el=>{
+      el.classList.toggle('active', el.dataset.tab === tabId);
+    });
+    // Đặt lại More button state
+    document.querySelectorAll('#mob-more-panel .mob-more-btn').forEach(el=>{
+      el.classList.remove('active');
+    });
+    setTab(tabId);
+    mobMoreClose();
+  };
+
+  window.mobMoreOpen = function(){
+    const sheet = document.getElementById('mob-more-sheet');
+    if(sheet) sheet.classList.add('show');
+    // Cập nhật active trong More
+    const cur = typeof S !== 'undefined' ? S.curTab : '';
+    document.querySelectorAll('.mob-more-btn').forEach(el=>{
+      el.classList.toggle('active', el.dataset.tab === cur);
+    });
+  };
+  window.mobMoreClose = function(){
+    const sheet = document.getElementById('mob-more-sheet');
+    if(sheet) sheet.classList.remove('show');
+  };
+
+  window.mobMoreTap = function(tabId){
+    // Đặt tất cả bottom nav về inactive
+    document.querySelectorAll('#mob-nav .mob-nav-item').forEach(el=>{
+      el.classList.remove('active');
+    });
+    // Active "More" button
+    const moreBtn = document.querySelector('#mob-nav [data-tab="_more"]');
+    if(moreBtn) moreBtn.classList.add('active');
+    setTab(tabId);
+    mobMoreClose();
+  };
+
+  // Cập nhật badge báo cháy
+  function updateFireBadge(){
+    const badge = document.getElementById('mob-badge-fire');
+    if(!badge) return;
+    const hasFire = typeof fireSystemStatus === 'function' && fireSystemStatus() === 'alarm';
+    badge.classList.toggle('show', hasFire);
+  }
+  setInterval(updateFireBadge, 1000);
+
+  // Patch setTab để đồng bộ bottom nav
+  const _origSetTab = window.setTab;
+  window.setTab = function(tab){
+    _origSetTab(tab);
+    // Cập nhật bottom nav active
+    const mainTabs = NAV_TABS.map(t=>t.id).filter(t=>t!=='_more');
+    const inMain = mainTabs.includes(tab);
+    document.querySelectorAll('#mob-nav .mob-nav-item').forEach(el=>{
+      if(el.dataset.tab === '_more'){
+        el.classList.toggle('active', !inMain);
+      } else {
+        el.classList.toggle('active', el.dataset.tab === tab);
+      }
+    });
+    document.querySelectorAll('.mob-more-btn').forEach(el=>{
+      el.classList.toggle('active', el.dataset.tab === tab);
+    });
+  };
+
+  // Swipe ngang để chuyển tab
+  const ALL_TABS = ['overview','floorplan','fire','power','ac','network','shutter','report','info','qty','facade'];
+  let _swipeX = 0, _swipeY = 0, _swipeLocked = false;
+  document.addEventListener('touchstart', e=>{
+    _swipeX = e.touches[0].clientX;
+    _swipeY = e.touches[0].clientY;
+    _swipeLocked = false;
+  },{passive:true});
+  document.addEventListener('touchend', e=>{
+    if(_swipeLocked) return;
+    const dx = e.changedTouches[0].clientX - _swipeX;
+    const dy = Math.abs(e.changedTouches[0].clientY - _swipeY);
+    // Chỉ swipe ngang (dx > 60px, dy < 40px) và không phải từ mép (sidebar)
+    if(Math.abs(dx) > 60 && dy < 40 && _swipeX > 40 && _swipeX < window.innerWidth - 40){
+      if(typeof S !== 'undefined'){
+        const cur = ALL_TABS.indexOf(S.curTab);
+        if(dx < 0 && cur < ALL_TABS.length-1) window.setTab(ALL_TABS[cur+1]);
+        if(dx > 0 && cur > 0) window.setTab(ALL_TABS[cur-1]);
+      }
+    }
+  },{passive:true});
+
+})();
 </script>
 </html>
