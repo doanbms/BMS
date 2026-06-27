@@ -1721,11 +1721,11 @@ body {
   </div>
   <div class="tb-right">
     <button class="fs-icon-btn" id="fs-btn" onclick="bmsFSToggle()" title="Toàn màn hình (F)">⛶</button>
-    <div style="text-align:center;">
-      <div style="font-family:var(--fmo);font-size:9px;color:var(--txd)">🌡 Trong nhà</div>
-      <div style="font-family:var(--fmo);font-size:12px;color:var(--ac)" id="si-temp">28.2°C</div>
-    </div>
-    <div class="vdiv"></div>
+    <!-- Hidden elements giữ để fetchWeather cập nhật, không hiển thị -->
+    <span id="si-temp" style="display:none"></span>
+    <span id="si-out-temp" style="display:none"></span>
+    <span id="si-out-hum" style="display:none"></span>
+    <span id="si-out-lbl" style="display:none"></span>
     <div class="clk-box">
       <div class="clk" id="clk">--:--:--</div>
       <div class="clk-date" id="clk-date">-- / -- / ----</div>
@@ -1736,9 +1736,12 @@ body {
 <!-- ════════════════════ SENSOR BAR ════════════════════ -->
 <div class="sbar">
   <div class="sb-item"><span class="sb-icon">🌡</span><span class="sb-lbl">Trong nhà:</span><span class="sb-val" id="sTemp">28.2°C</span></div>
-  <div class="sb-item"><span class="sb-icon">💧</span><span class="sb-lbl">Độ ẩm:</span><span class="sb-val" id="sHum">71%</span></div>
+  <div class="sb-item"><span class="sb-icon">💧</span><span class="sb-lbl">Độ ẩm trong:</span><span class="sb-val" id="sHum">71%</span></div>
   <div class="sb-item"><span class="sb-icon">⚡</span><span class="sb-lbl">Điện áp:</span><span class="sb-val" id="sVolt">220V</span></div>
-  <div class="sb-item"><span class="sb-icon">🌡</span><span class="sb-lbl">Ngoài trời:</span><span class="sb-val hi" id="sOut">31°C</span></div>
+  <div class="sb-item"><span class="sb-icon" id="sWeatherIcon">🌡</span><span class="sb-lbl">Ngoài trời:</span><span class="sb-val hi" id="sOut">--°C</span></div>
+  <div class="sb-item"><span class="sb-icon">💧</span><span class="sb-lbl">Độ ẩm ngoài:</span><span class="sb-val" id="sOutHum" style="color:var(--ac)">--%</span></div>
+  <div class="sb-item"><span class="sb-icon">🌬</span><span class="sb-lbl">Gió:</span><span class="sb-val" id="sWind" style="color:var(--ac3)">-- km/h</span></div>
+  <div class="sb-item"><span class="sb-icon">☁</span><span class="sb-lbl">Thời tiết:</span><span class="sb-val" id="sWeatherDesc" style="color:var(--txb)">Đang tải...</span></div>
   <div class="sb-item"><span class="sb-icon">📶</span><span class="sb-lbl">Internet:</span><span class="sb-val ok">VNPT · 100Mbps</span></div>
   <div class="sb-item"><span class="sb-icon">⚙</span><span class="sb-lbl">Thiết kế:</span><span class="sb-val ac">KTS Trịnh Quốc Việt · Konia.vn</span></div>
   <div class="sb-ticker" id="ticker">▶ Hệ thống BMS Tòa nhà Kim Thoa đang hoạt động bình thường · Tất cả CB: BẬT · 9 camera: ONLINE</div>
@@ -1781,22 +1784,8 @@ body {
 
   <!-- OVERVIEW -->
   <div id="pane-overview" class="tab-pane on" style="overflow-y:auto;">
-    <div class="ov-wrap">
-      <!-- Quick controls -->
-      <div id="ov-extras"></div>
-      <!-- KPI -->
-      <div class="kpi-bar" id="kpiBar"></div>
-      <!-- Building header -->
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:0 2px">
-        <div style="display:flex;align-items:center;gap:6px">
-          <div style="width:3px;height:14px;border-radius:2px;background:var(--ac);box-shadow:0 0 6px var(--ac);"></div>
-          <span style="font-family:var(--fmo);font-size:9px;color:var(--txd);letter-spacing:2px;font-weight:700">TỔNG QUAN TÒA NHÀ</span>
-        </div>
-        <div style="height:1px;flex:1;background:linear-gradient(90deg,rgba(0,229,255,.1),transparent)"></div>
-        <span style="font-size:9px;color:var(--txe);font-family:var(--ff)">Click tầng → xem mặt bằng · Double-click → mở chi tiết</span>
-      </div>
-      <!-- Building -->
-      <div class="ov-bld" id="ovBld"></div>
+    <div class="ov-wrap" style="padding:16px 18px;">
+      <!-- Toàn bộ nội dung được render bởi renderOverview() -->
     </div>
   </div>
 
@@ -3107,109 +3096,299 @@ function renderCamMini(){
 // RENDER — OVERVIEW TAB
 // ══════════════════════════════════════════════════════════════════
 function renderOverview(){
-  renderOverviewExtras();
-  // KPI
-  const kpi=document.getElementById('kpiBar');
-  if(kpi){
-    const totalLit=Object.values(S.lights).filter(Boolean).length;
-    const totalAC=Object.values(S.ac).filter(Boolean).length;
-    const totalCB=Object.values(S.breakers).filter(Boolean).length;
-    const totalCam=Object.values(S.cams).filter(Boolean).length;
-    const load=parseFloat(document.getElementById('totalKW')?.textContent||'0');
-    const totalLitAll=FLOORS.reduce((a,f)=>a+f.rooms.reduce((b,r)=>b+r.lights,0),0);
-    const load2=parseFloat(document.getElementById('totalKW')?.textContent||'0');
-    const loadPct2=Math.min(100,Math.round(load2/20*100));
-    const fireSysSt=fireSystemStatus();
-    const fireNormalN=FIRE_DEVICES.filter(d=>S.fire[d.id]==='normal').length;
-    kpi.innerHTML=`
-    <div class="kpi-card" style="--kc:var(--ac4)" title="Đèn đang bật trong tòa nhà">
-      <div class="kpi-icon">💡</div>
-      <div class="kpi-val" style="color:var(--ac4)">${totalLit}</div>
-      <div class="kpi-lbl">Đèn đang bật</div>
-      <div class="kpi-sub">Tổng ${totalLitAll} bóng</div>
-      <div class="kpi-prog"><div class="kpi-prog-fill" style="width:${totalLitAll?Math.round(totalLit/totalLitAll*100):0}%;--kc:var(--ac4)"></div></div>
-    </div>
-    <div class="kpi-card" style="--kc:var(--ac)" title="Điều hòa đang chạy">
-      <div class="kpi-icon">❄️</div>
-      <div class="kpi-val" style="color:var(--ac)">${totalAC}</div>
-      <div class="kpi-lbl">Điều hòa bật</div>
-      <div class="kpi-sub">Tổng ${ALL_AC.length} máy</div>
-      <div class="kpi-prog"><div class="kpi-prog-fill" style="width:${ALL_AC.length?Math.round(totalAC/ALL_AC.length*100):0}%"></div></div>
-    </div>
-    <div class="kpi-card" style="--kc:var(--ok)" title="Số tầng đang có điện (CB bật)">
-      <div class="kpi-icon">⚡</div>
-      <div class="kpi-val" style="color:${totalCB===8?'var(--ok)':totalCB>0?'var(--warn)':'var(--err)'}">${totalCB}<span style="font-size:16px;font-weight:500;color:var(--txd)">/8</span></div>
-      <div class="kpi-lbl">Tầng có điện</div>
-      <div class="kpi-sub">${totalCB===8?'✅ Điện ổn định':'⚠️ Có tầng mất điện'}</div>
-      <div class="kpi-prog"><div class="kpi-prog-fill" style="width:${totalCB/8*100}%;--kc:var(--ok)"></div></div>
-    </div>
-    <div class="kpi-card" style="--kc:var(--ac2)" title="Camera IP đang kết nối">
-      <div class="kpi-icon">📹</div>
-      <div class="kpi-val" style="color:var(--ac2)">${totalCam}<span style="font-size:16px;font-weight:500;color:var(--txd)">/9</span></div>
-      <div class="kpi-lbl">Camera online</div>
-      <div class="kpi-sub">${totalCam===9?'🟢 Tất cả OK':'⚠️ Có cam offline'}</div>
-      <div class="kpi-prog"><div class="kpi-prog-fill" style="width:${totalCam/9*100}%;--kc:var(--ac2)"></div></div>
-    </div>
-    <div class="kpi-card" style="--kc:var(--warn)" title="Công suất điện đang tiêu thụ">
-      <div class="kpi-icon">🔋</div>
-      <div class="kpi-val live" id="kpi-load" style="color:${loadPct2>80?'var(--err)':loadPct2>50?'var(--warn)':'var(--ok)'}">${load2.toFixed(1)}<span style="font-size:14px;font-weight:500;color:var(--txd)"> kW</span></div>
-      <div class="kpi-lbl">Điện tiêu thụ</div>
-      <div class="kpi-sub">${loadPct2}% / max 20kW</div>
-      <div class="kpi-prog"><div class="kpi-prog-fill" style="width:${loadPct2}%;--kc:${loadPct2>80?'var(--err)':loadPct2>50?'var(--warn)':'var(--ok)'}"></div></div>
-    </div>
-    <div class="kpi-card" style="--kc:${fireSysSt==='alarm'?'var(--err)':fireSysSt==='fault'?'var(--warn)':'var(--ok)'}" title="Hệ thống báo cháy">
-      <div class="kpi-icon">🔥</div>
-      <div class="kpi-val" style="color:${fireSysSt==='alarm'?'var(--err)':fireSysSt==='fault'?'var(--warn)':'var(--ok)'}">${fireNormalN}<span style="font-size:16px;font-weight:500;color:var(--txd)">/${FIRE_DEVICES.length}</span></div>
-      <div class="kpi-lbl">Báo cháy bình thường</div>
-      <div class="kpi-sub">${fireSysSt==='alarm'?'🔥 ĐANG CÓ CHÁY':fireSysSt==='fault'?'⚠️ Có thiết bị lỗi':'✅ Giám sát 24/7'}</div>
-      <div class="kpi-prog"><div class="kpi-prog-fill" style="width:${FIRE_DEVICES.length?Math.round(fireNormalN/FIRE_DEVICES.length*100):0}%;--kc:${fireSysSt==='alarm'?'var(--err)':fireSysSt==='fault'?'var(--warn)':'var(--ok)'}"></div></div>
-    </div>`;
-  }
-  // Building
-  const bld=document.getElementById('ovBld');
-  if(!bld)return;
-  bld.innerHTML=FLOORS.map(f=>{
-    const litn=f.rooms.filter(r=>S.lights[r.id]).length;
-    const litTotal=f.rooms.reduce((a,r)=>a+r.lights,0);
-    const acn=f.rooms.filter(r=>S.ac[r.id]).length;
-    const camOn=f.cameras.filter(c=>S.cams[c.id]).length;
-    const totalCirc=f.rooms.reduce((a,r)=>a+r.circ,0);
-    const cbOn=S.breakers[f.id];
-    const isSel=f.id===S.floor;
-    return `<div class="bfl ${isSel?'sel':''}" onclick="selFloor('${f.id}');setTab('floorplan')"
-      title="${f.desc} · ${cbOn?'Có điện':'Mất điện'}">
-      <div class="bfl-bar" style="background:${f.com?'rgba(0,229,255,.25)':'rgba(0,255,136,.2)'};box-shadow:${cbOn?'0 0 6px '+(f.com?'rgba(0,229,255,.4)':'rgba(0,255,136,.3)'):'none'}"></div>
-      <div class="bfl-lbl">
-        <span style="color:${f.com?'var(--ac)':'var(--ac3)'}">${f.num}</span>
+  const el = document.getElementById('pane-overview');
+  if(!el) return;
+
+  // ── Dữ liệu thực ──
+  const totalLit    = Object.values(S.lights).filter(Boolean).length;
+  const totalLitAll = FLOORS.reduce((a,f)=>a+f.rooms.reduce((b,r)=>b+r.lights,0),0);
+  const totalAC     = Object.values(S.ac).filter(Boolean).length;
+  const totalCB     = Object.values(S.breakers).filter(Boolean).length;
+  const totalCam    = Object.values(S.cams).filter(Boolean).length;
+  const curKW       = parseFloat(document.getElementById('totalKW')?.textContent||'0');
+  const loadPct     = Math.min(100,Math.round(curKW/20*100));
+  const fireSysSt   = fireSystemStatus();
+  const fireNorm    = FIRE_DEVICES.filter(d=>S.fire[d.id]==='normal').length;
+  const elevFlLbl   = ['T1','T2','T3','T4','T5','T6','T7','TUM'][S.elevFloor-1]||'T1';
+
+  // Thời tiết
+  const wIcon  = document.getElementById('sWeatherIcon')?.textContent || '🌤';
+  const wTemp  = document.getElementById('sOut')?.textContent         || '--°C';
+  const wHum   = document.getElementById('sOutHum')?.textContent      || '--%';
+  const wWind  = document.getElementById('sWind')?.textContent        || '--';
+  const wDesc  = document.getElementById('sWeatherDesc')?.textContent || 'Đang tải...';
+  const inTemp = document.getElementById('sTemp')?.textContent        || '--°C';
+
+  // Trạng thái tổng
+  const sysOK = fireSysSt==='normal' && totalCB===8 && !S.fireCBLocked;
+  const sysColor = fireSysSt==='alarm'?'var(--err)':fireSysSt==='fault'||totalCB<8?'var(--warn)':'var(--ok)';
+  const sysLabel = fireSysSt==='alarm'?'🔥 CẢNH BÁO CHÁY':fireSysSt==='fault'?'⚠ Có sự cố':totalCB<8?'⚠ Mất điện 1 tầng':'✅ Hệ thống bình thường';
+
+  // KPI data
+  const kpis = [
+    { icon:'💡', val:totalLit, total:totalLitAll, lbl:'Đèn đang bật',     sub:`/ ${totalLitAll} bóng`,       c:'#ffcc00', tab:'floorplan' },
+    { icon:'❄',  val:totalAC,  total:ALL_AC.length,lbl:'Điều hòa bật',   sub:`/ ${ALL_AC.length} máy`,       c:'#00e5ff', tab:'ac'        },
+    { icon:'⚡', val:totalCB,  total:8,            lbl:'Tầng có điện',    sub:totalCB===8?'Tất cả bình thường':'Có tầng mất điện', c:totalCB===8?'#00dd66':'#ff9900', tab:'power' },
+    { icon:'📹', val:totalCam, total:9,             lbl:'Camera online',   sub:totalCam===9?'Tất cả OK':'Có cam offline', c:'#ff4d1a', tab:'network' },
+    { icon:'🔋', val:curKW.toFixed(1), total:null,  lbl:'Tiêu thụ điện',  sub:`${loadPct}% công suất`, c:loadPct>80?'var(--err)':loadPct>50?'#ff9900':'#00dd66', tab:'power', unit:'kW' },
+    { icon:'🔥', val:fireNorm, total:FIRE_DEVICES.length, lbl:'Báo cháy OK', sub:fireSysSt==='alarm'?'🔥 ĐANG CÓ CHÁY':fireSysSt==='fault'?'⚠ Có lỗi':'Giám sát 24/7', c:fireSysSt==='normal'?'#00dd66':'var(--err)', tab:'fire' },
+    { icon:'🛗', val:elevFlLbl, total:null,          lbl:'Thang máy',      sub:S.elevMoving?'Đang di chuyển':'Sẵn sàng', c:'#b06cff', tab:'overview' },
+    { icon:'🚪', val:Math.round(S['sh_pos_sh1']||0)+'%', total:null, lbl:'Cửa cuốn', sub:S['sh_status_sh1']==='moving_up'?'Đang mở':S['sh_status_sh1']==='moving_down'?'Đang đóng':'Đã dừng', c:'#ff6eb0', tab:'shutter' },
+  ];
+
+  const ovEl = document.querySelector('.ov-wrap');
+  if(ovEl) ovEl.innerHTML = `
+
+  <!-- ══ HERO HEADER ══ -->
+  <div style="display:flex;align-items:center;justify-content:space-between;
+    padding:16px 20px;margin-bottom:16px;border-radius:16px;
+    background:linear-gradient(135deg,rgba(0,229,255,.07) 0%,rgba(0,100,200,.04) 50%,rgba(0,0,0,0) 100%);
+    border:1px solid rgba(0,229,255,.12);">
+    <div>
+      <div style="font-family:var(--fmo);font-size:11px;font-weight:800;color:var(--txb);
+        letter-spacing:1px;">🏗 TÒA NHÀ KIM THOA</div>
+      <div style="font-size:10px;color:var(--txe);margin-top:3px;">
+        4.0m × 12.5m · 7 tầng + TUM · Hà Đông, Hà Nội
       </div>
-      <div class="bfl-body">
-        <div class="bfl-info">
-          <div style="display:flex;align-items:center;gap:6px">
-            <div class="bfl-name">${f.label}</div>
-            <span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;
-              background:${f.com?'rgba(0,229,255,.07)':'rgba(0,255,136,.06)'};
-              border:1px solid ${f.com?'rgba(0,229,255,.14)':'rgba(0,255,136,.12)'};
-              color:${f.com?'var(--ac)':'var(--ac3)'}">${f.com?'TM':'SH'}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:8px;height:8px;border-radius:50%;background:${sysColor};
+        box-shadow:0 0 8px ${sysColor};
+        ${fireSysSt==='alarm'?'animation:fire-blink .8s infinite':''}"></div>
+      <span style="font-size:10px;font-weight:700;color:${sysColor};">${sysLabel}</span>
+    </div>
+  </div>
+
+  <!-- ══ KPI GRID ══ -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;" id="kpiBar">
+    ${kpis.map((k,i)=>`
+    <div onclick="setTab('${k.tab}')" style="
+      background:linear-gradient(145deg,rgba(4,12,28,.95),rgba(6,18,38,.9));
+      border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:14px 14px 12px;
+      cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
+      ${i===kpis.length-1&&kpis.length%4!==0?'':''}
+      " onmouseenter="this.style.borderColor='${k.c}44';this.style.transform='translateY(-2px)'"
+        onmouseleave="this.style.borderColor='rgba(255,255,255,.06)';this.style.transform='translateY(0)'">
+      <!-- Accent bar trái -->
+      <div style="position:absolute;left:0;top:12px;bottom:12px;width:3px;
+        border-radius:0 2px 2px 0;background:${k.c};box-shadow:0 0 8px ${k.c}66;"></div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-left:8px;">
+        <div>
+          <div style="font-size:9px;color:var(--txe);font-weight:600;letter-spacing:.5px;
+            margin-bottom:6px;">${k.lbl.toUpperCase()}</div>
+          <div style="font-family:var(--fmo);font-size:${typeof k.val==='string'?'18':'22'}px;
+            font-weight:900;color:${k.c};line-height:1;">
+            ${k.val}${k.unit?`<span style="font-size:12px;font-weight:500;color:var(--txd);margin-left:2px">${k.unit}</span>`:''}
+            ${k.total!==null?`<span style="font-size:12px;font-weight:500;color:var(--txe)">/${k.total}</span>`:''}
           </div>
-          <div class="bfl-desc">${f.desc}</div>
-          <div class="bfl-rooms" style="margin-top:4px">
-            ${f.rooms.filter(r=>r.circ>0).map(r=>{
-              const cl=S.lights[r.id]&&S.ac[r.id]?'litcold':S.lights[r.id]?'lit':S.ac[r.id]?'cold':'';
-              return `<span class="bfl-rtag ${cl}">${r.icon} ${r.name}</span>`;
-            }).join('')}
+          <div style="font-size:8px;color:var(--txe);margin-top:4px;">${k.sub}</div>
+        </div>
+        <span style="font-size:22px;opacity:.7;">${k.icon}</span>
+      </div>
+      ${k.total!==null?`
+      <div style="height:2px;background:rgba(255,255,255,.05);border-radius:1px;
+        margin-top:10px;margin-left:8px;overflow:hidden;">
+        <div style="height:100%;background:${k.c};border-radius:1px;transition:width .5s;
+          width:${k.total>0?Math.round((parseFloat(k.val)||0)/k.total*100):loadPct}%;
+          box-shadow:0 0 6px ${k.c};"></div>
+      </div>`:''}
+    </div>`).join('')}
+  </div>
+
+  <!-- ══ 2 CỘT: THỜI TIẾT + TÒA NHÀ ══ -->
+  <div style="display:grid;grid-template-columns:280px 1fr;gap:14px;align-items:start;">
+
+    <!-- CỘT TRÁI: Thời tiết + Hành động nhanh -->
+    <div style="display:flex;flex-direction:column;gap:10px;">
+
+      <!-- Thời tiết -->
+      <div style="background:linear-gradient(145deg,rgba(0,100,200,.1),rgba(0,50,150,.05));
+        border:1px solid rgba(0,180,255,.18);border-radius:14px;overflow:hidden;">
+        <div style="padding:12px 14px 10px;border-bottom:1px solid rgba(255,255,255,.05);">
+          <div style="font-size:8px;font-family:var(--fmo);font-weight:700;color:var(--txe);
+            letter-spacing:1px;margin-bottom:8px;">🌤 THỜI TIẾT — HÀ ĐÔNG</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:36px;line-height:1;">${wIcon}</span>
+            <div>
+              <div style="font-family:var(--fmo);font-size:26px;font-weight:900;
+                color:var(--ac);line-height:1;">${wTemp}</div>
+              <div style="font-size:9px;color:var(--txd);margin-top:3px;">${wDesc}</div>
+            </div>
           </div>
         </div>
-        <div class="bfl-right">
-          ${litn>0?`<div class="bfl-stat"><div class="bfl-stat-num" style="color:var(--ac4)">💡${litn}</div><div class="bfl-stat-lbl">Đèn</div></div>`:''}
-          ${acn>0?`<div class="bfl-stat"><div class="bfl-stat-num" style="color:var(--ac)">❄${acn}</div><div class="bfl-stat-lbl">ĐH</div></div>`:''}
-          ${camOn>0?`<div class="bfl-stat"><div class="bfl-stat-num" style="color:var(--ac2)">📷${camOn}</div><div class="bfl-stat-lbl">Cam</div></div>`:''}
-          <span class="bfl-cb-badge ${cbOn?'on':'off'}">${cbOn?'ON':'OFF'}</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:10px 14px;gap:6px;">
+          ${[
+            ['💧','Độ ẩm NT',wHum,'var(--ac3)'],
+            ['🌬','Tốc độ gió',wWind,'var(--txb)'],
+            ['🏢','Trong nhà',inTemp,'var(--ac4)'],
+          ].map(([ic,lb,v,c])=>`
+            <div style="text-align:center;">
+              <div style="font-size:14px;">${ic}</div>
+              <div style="font-family:var(--fmo);font-size:11px;font-weight:700;color:${c};margin-top:2px;">${v}</div>
+              <div style="font-size:7px;color:var(--txe);margin-top:1px;">${lb}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Điều khiển nhanh -->
+      <div style="background:rgba(4,12,28,.9);border:1px solid var(--bd0);border-radius:14px;padding:12px 14px;">
+        <div style="font-size:8px;font-family:var(--fmo);font-weight:700;color:var(--txe);
+          letter-spacing:1px;margin-bottom:10px;">⚡ ĐIỀU KHIỂN NHANH</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${[
+            ['💡','Đèn tất cả tầng','allBuildingLights(true)','allBuildingLights(false)','#ffcc00'],
+            ['❄','Điều hòa tất cả','allBuildingAC(true)','allBuildingAC(false)','#00e5ff'],
+            ['🔌','CB tất cả tầng','allBuildingCB(true)','allBuildingCB(false)','#00dd66'],
+          ].map(([ic,lb,on,off,c])=>`
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:14px;">${ic}</span>
+              <span style="font-size:9px;color:var(--txe);flex:1;">${lb}</span>
+              <div style="display:flex;gap:4px;">
+                <button onclick="${on}" style="padding:4px 10px;border-radius:5px;cursor:pointer;
+                  font-size:9px;font-weight:700;font-family:var(--ff);
+                  background:${c}18;border:1px solid ${c}44;color:${c};touch-action:manipulation;">BẬT</button>
+                <button onclick="${off}" style="padding:4px 10px;border-radius:5px;cursor:pointer;
+                  font-size:9px;font-weight:700;font-family:var(--ff);
+                  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+                  color:var(--txe);touch-action:manipulation;">TẮT</button>
+              </div>
+            </div>`).join('')}
+        </div>
+        <!-- Nút truy cập nhanh các hệ thống -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;
+          padding-top:10px;border-top:1px solid var(--bd0);">
+          ${[
+            ['🔥','Báo cháy','fire'],
+            ['🚪','Cửa cuốn','shutter'],
+            ['📊','Báo cáo','report'],
+            ['📐','Mặt bằng','floorplan'],
+          ].map(([ic,lb,tab])=>`
+            <button onclick="setTab('${tab}')" style="display:flex;align-items:center;gap:6px;
+              padding:7px 10px;border-radius:8px;cursor:pointer;font-family:var(--ff);
+              background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+              color:var(--txd);font-size:10px;font-weight:600;touch-action:manipulation;
+              transition:all .15s;" onmouseenter="this.style.background='rgba(0,229,255,.07)'"
+              onmouseleave="this.style.background='rgba(255,255,255,.03)'">
+              <span>${ic}</span><span>${lb}</span>
+            </button>`).join('')}
+        </div>
+      </div>
+
+      <!-- Trạng thái hệ thống PCCC -->
+      ${fireSysSt!=='normal'?`
+      <div style="padding:12px 14px;border-radius:12px;
+        background:${fireSysSt==='alarm'?'rgba(255,34,85,.12)':'rgba(255,153,0,.08)'};
+        border:1.5px solid ${fireSysSt==='alarm'?'rgba(255,34,85,.4)':'rgba(255,153,0,.3)'};
+        ${fireSysSt==='alarm'?'animation:fire-pulse-bg 1.2s infinite':''}">
+        <div style="font-size:11px;font-weight:800;color:${sysColor};">
+          ${sysLabel}
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button onclick="setTab('fire')" style="flex:1;padding:6px;border-radius:7px;cursor:pointer;
+            font-size:10px;font-weight:700;font-family:var(--ff);
+            background:${fireSysSt==='alarm'?'rgba(255,34,85,.15)':'rgba(255,153,0,.12)'};
+            border:1px solid ${fireSysSt==='alarm'?'rgba(255,34,85,.35)':'rgba(255,153,0,.3)'};
+            color:${sysColor};touch-action:manipulation;">Xem báo cháy</button>
+          ${fireSysSt==='alarm'?`<button onclick="resetFireSystem()" style="flex:1;padding:6px;border-radius:7px;
+            cursor:pointer;font-size:10px;font-weight:700;font-family:var(--ff);
+            background:rgba(0,221,102,.1);border:1px solid rgba(0,221,102,.25);color:var(--ok);
+            touch-action:manipulation;">✅ Reset</button>`:''}
+        </div>
+      </div>`:''}
+    </div>
+
+    <!-- CỘT PHẢI: Sơ đồ tòa nhà -->
+    <div style="background:rgba(4,12,28,.9);border:1px solid var(--bd0);
+      border-radius:14px;overflow:hidden;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--bd0);
+        display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:8px;font-family:var(--fmo);font-weight:700;color:var(--txe);
+          letter-spacing:1px;">🏢 SƠ ĐỒ 8 TẦNG — Bấm để xem mặt bằng</div>
+        <div style="display:flex;gap:10px;font-size:8px;color:var(--txe);">
+          <span><span style="color:var(--ac)">■</span> Thương mại</span>
+          <span><span style="color:var(--ac3)">■</span> Sinh hoạt</span>
+        </div>
+      </div>
+      <div style="padding:10px 12px;display:flex;flex-direction:column;gap:5px;" id="ovBld"></div>
+    </div>
+  </div>`;
+
+  // Render floor rows
+  const bld = document.getElementById('ovBld');
+  if(!bld) return;
+  bld.innerHTML = FLOORS.slice().reverse().map(f=>{
+    const litN     = f.rooms.filter(r=>S.lights[r.id]).length;
+    const litTotal = f.rooms.reduce((a,r)=>a+r.lights,0);
+    const acN      = f.rooms.filter(r=>S.ac[r.id]).length;
+    const camOn    = f.cameras.filter(c=>S.cams[c.id]).length;
+    const cbOn     = S.breakers[f.id];
+    const isSel    = f.id===S.floor;
+    const fireSt   = fireZoneStatus(f.id);
+    const col      = f.com?'var(--ac)':'var(--ac3)';
+    const litPct   = litTotal>0?Math.round(litN/litTotal*100):0;
+
+    return `<div onclick="selFloor('${f.id}');setTab('floorplan')"
+      style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;
+        cursor:pointer;transition:all .18s;touch-action:manipulation;
+        background:${isSel?`${f.com?'rgba(0,229,255,.08)':'rgba(0,255,136,.06)'}`:'rgba(255,255,255,.02)'};
+        border:1px solid ${isSel?`${f.com?'rgba(0,229,255,.25)':'rgba(0,255,136,.2)'}`:
+          fireSt==='alarm'?'rgba(255,34,85,.3)':'rgba(255,255,255,.04)'};
+        ${fireSt==='alarm'?'animation:fire-pulse-bg 1.4s infinite':''}"
+      onmouseenter="this.style.background='rgba(255,255,255,.05)'"
+      onmouseleave="this.style.background='${isSel?`${f.com?'rgba(0,229,255,.08)':'rgba(0,255,136,.06)'}`:fireSt==='alarm'?'rgba(255,34,85,.06)':'rgba(255,255,255,.02)'}'">
+
+      <!-- Số tầng -->
+      <div style="font-family:var(--fmo);font-size:13px;font-weight:800;color:${col};
+        width:34px;text-align:center;flex-shrink:0;">${f.num}</div>
+
+      <!-- Tên + mô tả -->
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:11px;font-weight:700;color:var(--txb);">${f.label}</span>
+          <span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;
+            background:${f.com?'rgba(0,229,255,.08)':'rgba(0,255,136,.06)'};
+            border:1px solid ${f.com?'rgba(0,229,255,.15)':'rgba(0,255,136,.12)'};
+            color:${col};">${f.com?'TM':'SH'}</span>
+          ${fireSt==='alarm'?'<span style="font-size:8px;color:var(--err);font-weight:700;animation:fire-blink .8s infinite;">🔥 CHÁY</span>':''}
+          ${fireSt==='fault'?'<span style="font-size:8px;color:var(--warn);font-weight:700;">⚠ Lỗi</span>':''}
+        </div>
+        <div style="font-size:9px;color:var(--txe);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${f.desc}</div>
+        <!-- Thanh đèn nhỏ -->
+        ${litTotal>0?`<div style="height:2px;background:rgba(255,255,255,.05);border-radius:1px;margin-top:5px;overflow:hidden;">
+          <div style="height:100%;background:${litN>0?'var(--ac4)':'rgba(255,255,255,.05)'};border-radius:1px;
+            width:${litPct}%;transition:width .4s;"></div>
+        </div>`:''}
+      </div>
+
+      <!-- Badges -->
+      <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
+        ${litN>0?`<div style="display:flex;align-items:center;gap:2px;padding:2px 7px;border-radius:5px;
+          background:rgba(255,204,0,.1);border:1px solid rgba(255,204,0,.2);">
+          <span style="font-size:10px;">💡</span>
+          <span style="font-family:var(--fmo);font-size:9px;font-weight:700;color:var(--ac4);">${litN}</span>
+        </div>`:''}
+        ${acN>0?`<div style="display:flex;align-items:center;gap:2px;padding:2px 7px;border-radius:5px;
+          background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.15);">
+          <span style="font-size:10px;">❄</span>
+          <span style="font-family:var(--fmo);font-size:9px;font-weight:700;color:var(--ac);">${acN}</span>
+        </div>`:''}
+        ${camOn>0?`<div style="display:flex;align-items:center;gap:2px;padding:2px 7px;border-radius:5px;
+          background:rgba(255,77,26,.08);border:1px solid rgba(255,77,26,.15);">
+          <span style="font-size:10px;">📷</span>
+          <span style="font-family:var(--fmo);font-size:9px;font-weight:700;color:var(--ac2);">${camOn}</span>
+        </div>`:''}
+        <div style="padding:2px 7px;border-radius:5px;font-family:var(--fmo);font-size:8px;font-weight:700;
+          background:${cbOn?'rgba(0,221,102,.1)':'rgba(255,34,85,.1)'};
+          border:1px solid ${cbOn?'rgba(0,221,102,.25)':'rgba(255,34,85,.3)'};
+          color:${cbOn?'var(--ok)':'var(--err)'};">
+          ${cbOn?'ON':'OFF'}
         </div>
       </div>
     </div>`;
   }).join('');
 }
 
+function renderOverviewExtras(){ /* nội dung đã tích hợp vào renderOverview */ }
 // ══════════════════════════════════════════════════════════════════
 // RENDER — FLOOR PLAN
 // ══════════════════════════════════════════════════════════════════
@@ -6024,44 +6203,107 @@ function allBuildingCB(on){
 function renderOverviewExtras(){
   const el=document.getElementById('ov-extras');
   if(!el)return;
-  // Tính trạng thái
   const totalLitQ=Object.values(S.lights).filter(Boolean).length;
   const totalACQ=Object.values(S.ac).filter(Boolean).length;
   const totalCBQ=Object.values(S.breakers).filter(Boolean).length;
+
+  // Lấy dữ liệu thời tiết thực từ DOM (đã được fetchWeather() cập nhật)
+  const outTemp  = document.getElementById('sOut')?.textContent   || '--°C';
+  const outHum   = document.getElementById('sOutHum')?.textContent|| '--%';
+  const outWind  = document.getElementById('sWind')?.textContent  || '--';
+  const outDesc  = document.getElementById('sWeatherDesc')?.textContent || 'Đang tải...';
+  const outIcon  = document.getElementById('sWeatherIcon')?.textContent || '🌡';
+
   el.innerHTML=`
+    <!-- THỜI TIẾT THỰC TẾ -->
+    <div style="background:linear-gradient(135deg,rgba(0,180,255,.07),rgba(0,100,200,.04));
+      border:1px solid rgba(0,180,255,.18);border-radius:14px;padding:14px 16px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="font-size:9px;font-family:var(--fmo);font-weight:700;color:var(--txe);
+          letter-spacing:1px;margin-bottom:6px;width:100%;">
+          🌤 THỜI TIẾT THỰC TẾ — HÀ ĐÔNG, HÀ NỘI
+          <span style="font-weight:400;color:var(--txe);margin-left:6px;">(cập nhật mỗi 10 phút)</span>
+        </div>
+        <!-- Nhiệt độ -->
+        <div style="display:flex;align-items:center;gap:8px;
+          background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+          border-radius:10px;padding:10px 14px;flex:1;min-width:100px;">
+          <span style="font-size:28px;">${outIcon}</span>
+          <div>
+            <div style="font-family:var(--fmo);font-size:24px;font-weight:900;
+              color:var(--ac);">${outTemp}</div>
+            <div style="font-size:9px;color:var(--txe);margin-top:1px;">${outDesc}</div>
+          </div>
+        </div>
+        <!-- Độ ẩm -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;
+          background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+          border-radius:10px;padding:10px 14px;flex:1;min-width:80px;">
+          <span style="font-size:18px;">💧</span>
+          <div style="font-family:var(--fmo);font-size:18px;font-weight:700;
+            color:var(--ac3);">${outHum}</div>
+          <div style="font-size:8px;color:var(--txe);">Độ ẩm</div>
+        </div>
+        <!-- Gió -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;
+          background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+          border-radius:10px;padding:10px 14px;flex:1;min-width:80px;">
+          <span style="font-size:18px;">🌬</span>
+          <div style="font-family:var(--fmo);font-size:16px;font-weight:700;
+            color:var(--txb);">${outWind}</div>
+          <div style="font-size:8px;color:var(--txe);">Tốc độ gió</div>
+        </div>
+        <!-- Trong nhà -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;
+          background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+          border-radius:10px;padding:10px 14px;flex:1;min-width:80px;">
+          <span style="font-size:18px;">🏢</span>
+          <div style="font-family:var(--fmo);font-size:18px;font-weight:700;
+            color:var(--ac4);" id="ov-in-temp">--°C</div>
+          <div style="font-size:8px;color:var(--txe);">Trong nhà TB</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ĐIỀU KHIỂN NHANH -->
     <div class="qc-panel">
       <div class="qc-panel-hd">
         <div style="width:3px;height:12px;border-radius:2px;background:var(--ac);box-shadow:0 0 6px var(--ac);"></div>
         <span class="qc-panel-title">🏠 ĐIỀU KHIỂN NHANH — TOÀN TÒA NHÀ</span>
         <div class="qc-panel-stat">
           <span class="qc-stat-pill" style="background:rgba(255,204,0,.08);border:1px solid rgba(255,204,0,.18);color:var(--ac4);">💡 ${totalLitQ} đèn</span>
-          <span class="qc-stat-pill" style="background:rgba(0,229,255,.07);border:1px solid rgba(0,229,255,.15);color:var(--ac);">❄ ${totalACQ} AC</span>
+          <span class="qc-stat-pill" style="background:rgba(0,229,255,.07);border:1px solid rgba(0,229,255,.15);color:var(--ac);">❄ ${totalACQ} điều hòa</span>
           <span class="qc-stat-pill" style="background:rgba(0,221,102,.07);border:1px solid rgba(0,221,102,.15);color:var(--ok);">⚡ ${totalCBQ}/8 CB</span>
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding-bottom:4px;flex-wrap:nowrap;" class="qc-row">
-        <button class="qc-btn light-on" onclick="allBuildingLights(true)" title="Bật đèn tất cả các tầng">
-          <span class="qc-ico">💡</span> BẮt đèn tất cả
+        <button class="qc-btn light-on" onclick="allBuildingLights(true)">
+          <span class="qc-ico">💡</span> Bật đèn tất cả
         </button>
-        <button class="qc-btn light-off" onclick="allBuildingLights(false)" title="Tắt đèn tất cả">
+        <button class="qc-btn light-off" onclick="allBuildingLights(false)">
           <span class="qc-ico">🌕</span> Tắt đèn tất cả
         </button>
         <div style="width:1px;height:28px;background:var(--bd1)"></div>
-        <button class="qc-btn ac-on" onclick="allBuildingAC(true)" title="Bật điều hòa tất cả">
-          <span class="qc-ico">❄️</span> BẮt điều hòa
+        <button class="qc-btn ac-on" onclick="allBuildingAC(true)">
+          <span class="qc-ico">❄️</span> Bật điều hòa
         </button>
-        <button class="qc-btn ac-off" onclick="allBuildingAC(false)" title="Tắt điều hòa tất cả">
+        <button class="qc-btn ac-off" onclick="allBuildingAC(false)">
           <span class="qc-ico">⏹️</span> Tắt điều hòa
         </button>
         <div style="width:1px;height:28px;background:var(--bd1)"></div>
-        <button class="qc-btn cb-on" onclick="allBuildingCB(true)" title="Bật CB tất cả tầng">
-          <span class="qc-ico">🟢</span> BẮt tất cả CB
+        <button class="qc-btn cb-on" onclick="allBuildingCB(true)">
+          <span class="qc-ico">🟢</span> Bật tất cả CB
         </button>
-        <button class="qc-btn cb-off" onclick="allBuildingCB(false)" title="Tắt CB tất cả tầng — cẩn thận!">
+        <button class="qc-btn cb-off" onclick="allBuildingCB(false)">
           <span class="qc-ico">🔴</span> Tắt tất cả CB
         </button>
       </div>
     </div>`;
+
+  // Cập nhật nhiệt độ trong nhà (trung bình giả lập từ nhiệt ngoài + điều hòa)
+  const inTempEl = document.getElementById('ov-in-temp');
+  const sT = document.getElementById('sTemp');
+  if(inTempEl && sT) inTempEl.textContent = sT.textContent;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -8563,6 +8805,19 @@ button:focus-visible, [tabindex]:focus-visible {
 ══════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
 
+  /* ── OVERVIEW TAB ── */
+  /* KPI 4 cột → 2 cột */
+  #kpiBar { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
+  /* 2 cột layout → 1 cột */
+  .ov-wrap > div[style*="grid-template-columns:280px"],
+  .ov-wrap > div[style*="grid-template-columns: 280px"] {
+    grid-template-columns: 1fr !important;
+  }
+  /* Thời tiết: 3 ô ngang */
+  .ov-wrap { padding: 12px !important; }
+  /* KPI card font nhỏ */
+  #kpiBar > div { padding: 10px 10px 8px !important; }
+
   /* ── BÁO CHÁY TAB ── */
   .fire-wrap {
     grid-template-columns: 1fr !important;
@@ -9993,5 +10248,143 @@ updateEnergyDisplay = function(){
   },{passive:true});
 
 })();
+</script>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// THỜI TIẾT THỰC TẾ — Open-Meteo API (miễn phí, không cần key)
+// Vị trí: Hà Đông, Hà Nội — Lat 20.9667°N · Lon 105.7833°E
+// Cập nhật mỗi 10 phút
+// ══════════════════════════════════════════════════════════════════
+const WEATHER_LAT  = 20.9667;
+const WEATHER_LON  = 105.7833;
+const WEATHER_URL  = `https://api.open-meteo.com/v1/forecast?latitude=${WEATHER_LAT}&longitude=${WEATHER_LON}`
+  + `&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,apparent_temperature`
+  + `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code`
+  + `&timezone=Asia%2FBangkok&forecast_days=1`;
+
+// Mã thời tiết WMO → mô tả tiếng Việt + icon
+const WMO_MAP = {
+  0:  ['Trời quang', '☀️'],
+  1:  ['Ít mây', '🌤️'],
+  2:  ['Mây rải rác', '⛅'],
+  3:  ['Nhiều mây', '☁️'],
+  45: ['Sương mù', '🌫️'],
+  48: ['Sương mù đóng băng', '🌫️'],
+  51: ['Mưa phùn nhẹ', '🌦️'],
+  53: ['Mưa phùn vừa', '🌦️'],
+  55: ['Mưa phùn nặng', '🌧️'],
+  61: ['Mưa nhẹ', '🌧️'],
+  63: ['Mưa vừa', '🌧️'],
+  65: ['Mưa to', '🌧️'],
+  71: ['Tuyết nhẹ', '🌨️'],
+  73: ['Tuyết vừa', '❄️'],
+  75: ['Tuyết dày', '❄️'],
+  80: ['Mưa rào nhẹ', '🌦️'],
+  81: ['Mưa rào vừa', '🌧️'],
+  82: ['Mưa rào to', '⛈️'],
+  95: ['Giông bão', '⛈️'],
+  96: ['Giông có mưa đá nhẹ', '⛈️'],
+  99: ['Giông có mưa đá to', '⛈️'],
+};
+
+function getWMO(code){
+  return WMO_MAP[code] || ['Không xác định','🌡️'];
+}
+
+async function fetchWeather(){
+  try {
+    const res = await fetch(WEATHER_URL, { signal: AbortSignal.timeout(8000) });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const d = await res.json();
+    const c = d.current;
+
+    const temp      = Math.round(c.temperature_2m);
+    const feelsLike = Math.round(c.apparent_temperature);
+    const humidity  = Math.round(c.relative_humidity_2m);
+    const wind      = Math.round(c.wind_speed_10m);
+    const code      = c.weather_code;
+    const [desc, icon] = getWMO(code);
+
+    const daily     = d.daily;
+    const maxT      = Math.round(daily.temperature_2m_max[0]);
+    const minT      = Math.round(daily.temperature_2m_min[0]);
+    const rain      = daily.precipitation_sum[0];
+
+    // Cập nhật sensor bar
+    const elOut     = document.getElementById('sOut');
+    const elOutHum  = document.getElementById('sOutHum');
+    const elWind    = document.getElementById('sWind');
+    const elDesc    = document.getElementById('sWeatherDesc');
+    const elIcon    = document.getElementById('sWeatherIcon');
+
+    if(elOut){
+      elOut.textContent = temp + '°C';
+      elOut.className = 'sb-val ' + (temp >= 35 ? 'hi' : temp <= 18 ? 'ac' : '');
+      elOut.title = `Cảm giác như ${feelsLike}°C · Cao ${maxT}° / Thấp ${minT}°`;
+    }
+    if(elOutHum){
+      elOutHum.textContent = humidity + '%';
+      elOutHum.style.color = humidity > 85 ? 'var(--warn)' : humidity > 70 ? 'var(--ac)' : 'var(--ok)';
+      elOutHum.title = `Độ ẩm tương đối ngoài trời: ${humidity}%`;
+    }
+    if(elWind){
+      elWind.textContent = wind + ' km/h';
+      elWind.style.color = wind > 40 ? 'var(--err)' : wind > 20 ? 'var(--warn)' : 'var(--ac3)';
+    }
+    if(elDesc) elDesc.textContent = desc;
+    if(elIcon) elIcon.textContent = icon;
+
+    // Cập nhật topbar
+    const elSiOutTemp = document.getElementById('si-out-temp');
+    const elSiOutHum  = document.getElementById('si-out-hum');
+    const elSiOutLbl  = document.getElementById('si-out-lbl');
+    if(elSiOutTemp) elSiOutTemp.textContent = icon + ' ' + temp + '°C';
+    if(elSiOutHum)  elSiOutHum.textContent  = humidity + '%';
+    if(elSiOutLbl)  elSiOutLbl.textContent  = '🌤 Ngoài trời';
+
+    // Cập nhật topbar nếu có (si-temp cũ)
+    const elSiTemp = document.getElementById('si-temp');
+    if(elSiTemp) elSiTemp.textContent = icon + ' ' + temp + '°C';
+
+    // Cập nhật mobile bottom bar nếu đang ở mobile
+    const mbbTemp = document.getElementById('mbb-temp');
+    if(mbbTemp) mbbTemp.textContent = icon + ' ' + temp + '°C';
+
+    // Log thời tiết
+    const now = new Date();
+    const timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+    if(typeof log === 'function'){
+      log('info', `🌤 Thời tiết ${timeStr} — Hà Đông: ${icon} ${desc} ${temp}°C · Ẩm ${humidity}% · Gió ${wind}km/h`);
+    }
+
+    // Cập nhật rain vào ticker
+    if(rain > 0 && typeof TICKER_MSGS !== 'undefined'){
+      const rainMsg = `☔ Dự báo mưa hôm nay: ${rain.toFixed(1)}mm · Kiểm tra hệ thống thoát nước`;
+      if(!TICKER_MSGS.includes(rainMsg)) TICKER_MSGS.push(rainMsg);
+    }
+
+    // Hiển thị Tổng quan nếu đang mở
+    if(typeof renderOverview === 'function' && typeof S !== 'undefined' && S.curTab === 'overview'){
+      renderOverview();
+    }
+
+    return { temp, humidity, wind, desc, icon, maxT, minT, rain, feelsLike, code };
+  } catch(err){
+    // Lỗi kết nối — hiển thị trạng thái offline
+    const elDesc = document.getElementById('sWeatherDesc');
+    const elOut  = document.getElementById('sOut');
+    if(elDesc) elDesc.textContent = 'Không có mạng';
+    if(elOut && elOut.textContent === '--°C') elOut.textContent = '--°C';
+    if(typeof log === 'function'){
+      log('warn', '⚠ Không thể tải dữ liệu thời tiết: ' + err.message);
+    }
+    return null;
+  }
+}
+
+// Gọi ngay khi load và mỗi 10 phút
+fetchWeather();
+setInterval(fetchWeather, 10 * 60 * 1000);
 </script>
 </html>
