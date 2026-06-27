@@ -811,298 +811,198 @@ body{font-family:var(--ff);color:var(--tx);display:flex;flex-direction:column;
 /* ══════════════════════════════════════════════════════════════
    LOGIN OVERLAY
 ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   LOGIN SCREEN — Thiết kế 2 cột chuyên nghiệp
+   Trái: Branding · Phải: Form đăng nhập
+══════════════════════════════════════════════════════════════ */
 #login-overlay {
-  position:fixed;inset:0;z-index:9000;
-  background:var(--bg0);
-  display:flex;flex-direction:column;
-  background-image:
-    radial-gradient(ellipse 80% 50% at 50% -5%,rgba(0,229,255,.07),transparent),
-    radial-gradient(ellipse 50% 40% at 85% 85%,rgba(176,108,255,.05),transparent),
-    linear-gradient(rgba(0,229,255,.009) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(0,229,255,.009) 1px,transparent 1px);
-  background-size:auto,auto,32px 32px,32px 32px;
-  transition:opacity .5s ease, transform .5s ease;
+  position: fixed; inset: 0; z-index: 9000;
+  display: flex;
+  background: #010c1a;
+  transition: opacity .5s ease, transform .5s ease;
 }
-#login-overlay.hide {
-  opacity:0;pointer-events:none;transform:scale(1.02);
-}
-#login-overlay::before {
-  content:'';position:fixed;inset:0;
-  background:linear-gradient(transparent 50%,rgba(0,229,255,.012) 50%);
-  background-size:100% 4px;pointer-events:none;
-  animation:lo-scan 8s linear infinite;
-}
-@keyframes lo-scan{0%{background-position:0 0}100%{background-position:0 100%}}
+#login-overlay.hide { opacity: 0; pointer-events: none; transform: scale(1.03); }
 
-/* topbar */
-/* ══ LOGIN — Giao diện thân thiện, ấm áp ══════════════════════ */
-#login-overlay {
-  position:fixed;inset:0;z-index:9000;
-  display:flex;flex-direction:column;
-  background:linear-gradient(135deg,#010c1a 0%,#02152e 50%,#010c1a 100%);
-  overflow:hidden;
+/* ── CỘT TRÁI — Branding ───────────────────────────────── */
+.lo-left {
+  flex: 1; position: relative;
+  display: flex; flex-direction: column;
+  justify-content: space-between;
+  padding: 40px 48px; overflow: hidden;
+  background: linear-gradient(160deg, #020f1e 0%, #031528 50%, #010c1a 100%);
 }
-#login-overlay::before {
-  content:'';position:absolute;inset:0;
-  background:
-    radial-gradient(ellipse 80% 60% at 20% 50%,rgba(0,229,255,.07),transparent),
-    radial-gradient(ellipse 60% 80% at 80% 30%,rgba(100,80,255,.06),transparent),
-    radial-gradient(ellipse 50% 50% at 60% 80%,rgba(0,200,100,.04),transparent);
-  pointer-events:none;
+.lo-left::before {
+  content: ''; position: absolute; inset: 0;
+  background-image: linear-gradient(rgba(0,229,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,.04) 1px, transparent 1px);
+  background-size: 48px 48px; pointer-events: none;
 }
+.lo-left::after {
+  content: ''; position: absolute; top: -20%; left: -10%;
+  width: 70%; height: 70%; border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,229,255,.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.lo-glow-br {
+  position: absolute; bottom: -15%; right: -10%;
+  width: 60%; height: 60%; border-radius: 50%;
+  background: radial-gradient(circle, rgba(176,108,255,.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+/* Scan line */
+.lo-left-scan {
+  position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+}
+.lo-left-scan::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 120px;
+  background: linear-gradient(transparent, rgba(0,229,255,.03), transparent);
+  animation: lo-scan-line 6s linear infinite;
+  top: -120px;
+}
+@keyframes lo-scan-line { to { top: 120%; } }
 
-/* ── TOPBAR ───────────────────────────────────────── */
-.lo-topbar {
-  height:56px;flex-shrink:0;position:relative;z-index:2;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 28px;
-  border-bottom:1px solid rgba(0,229,255,.08);
-  background:rgba(1,9,22,.6);backdrop-filter:blur(20px);
+.lo-brand {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 14px;
 }
-.lo-logo {
-  display:flex;align-items:center;gap:10px;
-  font-family:var(--fmo);font-size:16px;font-weight:700;
-  color:var(--ac);letter-spacing:4px;
-  filter:drop-shadow(0 0 8px rgba(0,229,255,.4));
+.lo-brand-icon {
+  width: 48px; height: 48px; border-radius: 12px;
+  background: linear-gradient(145deg, rgba(0,229,255,.15), rgba(0,229,255,.05));
+  border: 1px solid rgba(0,229,255,.25);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; box-shadow: 0 0 20px rgba(0,229,255,.12);
 }
-.lo-logo-dot {
-  width:9px;height:9px;border-radius:50%;
-  background:var(--ac);box-shadow:0 0 10px rgba(0,229,255,.7);
-  animation:lo-dot 2s ease-in-out infinite;
-}
-@keyframes lo-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.65)}}
+.lo-brand-text { font-family: var(--fmo); font-size: 11px; font-weight: 700; color: var(--txe); letter-spacing: 2px; line-height: 1.5; }
+.lo-brand-text b { display: block; font-size: 14px; color: var(--ac); letter-spacing: 4px; }
 
-/* ── CENTER ───────────────────────────────────────── */
-.lo-center {
-  flex:1;display:flex;align-items:center;justify-content:center;
-  position:relative;z-index:1;padding:24px 16px;
+.lo-hero {
+  position: relative; z-index: 1; flex: 1;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 40px 0;
 }
+.lo-hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(0,221,102,.08); border: 1px solid rgba(0,221,102,.2);
+  border-radius: 20px; padding: 5px 14px;
+  font-size: 10px; font-weight: 700; color: var(--ok); letter-spacing: .5px;
+  font-family: var(--fmo); margin-bottom: 22px; width: fit-content;
+}
+.lo-hero-badge::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ok); box-shadow: 0 0 6px var(--ok); animation: lo-pulse 2s infinite;
+}
+@keyframes lo-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.lo-hero-title {
+  font-family: var(--ff); font-size: 38px; font-weight: 900;
+  color: var(--txb); line-height: 1.2; letter-spacing: -1px; margin-bottom: 16px;
+}
+.lo-hero-title span { color: var(--ac); }
+.lo-hero-desc { font-size: 13px; color: var(--txe); line-height: 1.8; max-width: 380px; margin-bottom: 36px; }
+.lo-stats-row { display: flex; gap: 0; width: fit-content; }
+.lo-stat-item {
+  padding: 14px 22px; border: 1px solid rgba(255,255,255,.06);
+  background: rgba(255,255,255,.02); text-align: center;
+}
+.lo-stat-item:first-child { border-radius: 10px 0 0 10px; }
+.lo-stat-item:last-child  { border-radius: 0 10px 10px 0; }
+.lo-stat-item:not(:first-child) { border-left: none; }
+.lo-stat-num { font-family: var(--fmo); font-size: 20px; font-weight: 800; color: var(--ac); line-height: 1; }
+.lo-stat-lbl { font-size: 9px; color: var(--txe); margin-top: 3px; letter-spacing: .3px; }
+.lo-left-foot {
+  position: relative; z-index: 1; font-size: 10px; color: var(--txe);
+  display: flex; align-items: center; gap: 10px;
+}
+.lo-left-foot::before { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(0,229,255,.1)); }
 
-/* ── MAIN CARD ────────────────────────────────────── */
-.lo-wrap {
-  display:flex;flex-direction:column;align-items:center;
-  width:100%;max-width:420px;
-  animation:lo-appear .5s cubic-bezier(.34,1.2,.64,1) both;
+/* ── CỘT PHẢI — Form ────────────────────────────────────── */
+.lo-right {
+  width: 440px; flex-shrink: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 48px 44px; position: relative; overflow-y: auto;
+  background: rgba(2,8,20,.97);
+  border-left: 1px solid rgba(0,229,255,.08);
 }
-@keyframes lo-appear{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+.lo-clock-wrap { position: absolute; top: 22px; right: 24px; text-align: right; }
+.lo-clock-time { font-family: var(--fmo); font-size: 15px; font-weight: 700; color: var(--ac); letter-spacing: 2px; }
+.lo-clock-date { font-size: 9px; color: var(--txe); margin-top: 2px; letter-spacing: .5px; font-family: var(--fmo); }
 
-.lo-card {
-  width:100%;
-  background:rgba(5,16,34,.92);
-  border:1px solid rgba(0,229,255,.14);
-  border-radius:20px;
-  padding:36px 36px 28px;
-  box-shadow:0 24px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.02) inset;
-  position:relative;
-}
-.lo-card::before {
-  content:'';position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,rgba(0,229,255,.4) 30%,rgba(0,229,255,.4) 70%,transparent);
-}
+.lo-form-header { margin-bottom: 30px; }
+.lo-form-tag { font-family: var(--fmo); font-size: 9px; font-weight: 700; letter-spacing: 2px; color: var(--txe); margin-bottom: 10px; }
+.lo-form-title { font-family: var(--ff); font-size: 26px; font-weight: 800; color: var(--txb); letter-spacing: -.5px; margin-bottom: 6px; }
+.lo-form-sub { font-size: 12px; color: var(--txe); line-height: 1.6; }
+.lo-form-sub b { color: var(--ac); }
 
-/* ── ICON AVATAR ──────────────────────────────────── */
-.lo-shield-wrap {
-  display:flex;justify-content:center;margin-bottom:20px;
-}
-.lo-shield {
-  width:72px;height:72px;border-radius:50%;
-  background:linear-gradient(145deg,rgba(0,229,255,.12),rgba(0,229,255,.04));
-  border:2px solid rgba(0,229,255,.25);
-  display:flex;align-items:center;justify-content:center;
-  font-size:32px;line-height:1;
-  box-shadow:0 0 30px rgba(0,229,255,.15),0 8px 24px rgba(0,0,0,.4);
-  animation:lo-shield 3s ease-in-out infinite;
-}
-@keyframes lo-shield{
-  0%,100%{box-shadow:0 0 24px rgba(0,229,255,.12),0 8px 24px rgba(0,0,0,.4)}
-  50%{box-shadow:0 0 40px rgba(0,229,255,.25),0 8px 24px rgba(0,0,0,.4)}
-}
-.lo-shield svg{display:none;}
-
-/* ── HEADER TEXT ──────────────────────────────────── */
-.lo-header {text-align:center;margin-bottom:28px;}
-.lo-title {
-  font-family:var(--ff);font-size:24px;font-weight:800;
-  color:var(--txb);letter-spacing:-.5px;margin-bottom:6px;
-}
-.lo-sub {
-  font-size:13px;color:var(--txd);font-family:var(--ff);
-  font-weight:400;letter-spacing:0;
-}
-.lo-sub span{color:var(--ac);font-weight:600;}
-
-/* ── BADGE ────────────────────────────────────────── */
-.lo-badge {display:none;}
-
-/* ── INPUT ────────────────────────────────────────── */
-.lo-fg{margin-bottom:20px;}
-.lo-label{
-  display:block;font-family:var(--ff);font-size:12px;font-weight:600;
-  color:var(--txd);margin-bottom:8px;letter-spacing:.3px;
-}
-.lo-iw{position:relative;}
-.lo-iw .lo-ico{
-  position:absolute;left:14px;top:50%;transform:translateY(-50%);
-  width:17px;height:17px;color:rgba(0,229,255,.4);
-  transition:color .2s;pointer-events:none;
-}
-.lo-iw .lo-ico svg{
-  width:17px;height:17px;stroke:currentColor;fill:none;
-  stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
-}
+.lo-fg { margin-bottom: 16px; }
+.lo-label { display: block; font-size: 11px; font-weight: 600; color: var(--txd); margin-bottom: 7px; letter-spacing: .3px; }
+.lo-iw { position: relative; }
+.lo-iw .lo-ico { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: rgba(0,229,255,.35); transition: color .2s; pointer-events: none; }
+.lo-iw .lo-ico svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .lo-input {
-  width:100%;
-  background:rgba(2,10,22,.8);
-  border:1.5px solid rgba(0,229,255,.12);
-  border-radius:10px;
-  padding:13px 46px 13px 44px;
-  font-family:var(--ff);font-size:15px;color:var(--txb);
-  outline:none;transition:border-color .2s,box-shadow .2s;
+  width: 100%; background: rgba(1,6,16,.9); border: 1.5px solid rgba(0,229,255,.1);
+  border-radius: 10px; padding: 14px 46px 14px 44px;
+  font-family: var(--ff); font-size: 15px; color: var(--txb);
+  outline: none; transition: border-color .2s, box-shadow .2s; box-sizing: border-box;
 }
-.lo-input::placeholder{color:rgba(37,64,96,.7);font-size:14px;}
-.lo-input:focus{
-  border-color:rgba(0,229,255,.4);
-  box-shadow:0 0 0 3px rgba(0,229,255,.06);
-}
-.lo-input:focus ~ .lo-ico{color:var(--ac);}
-.lo-toggle{
-  position:absolute;right:12px;top:50%;transform:translateY(-50%);
-  background:none;border:none;cursor:pointer;
-  color:rgba(37,64,96,.7);padding:6px;border-radius:6px;
-  transition:color .2s,background .2s;
-}
-.lo-toggle:hover{color:var(--ac);background:rgba(0,229,255,.06);}
-.lo-toggle svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-
-/* ── DIVIDER ──────────────────────────────────────── */
-.lo-divider{
-  height:1px;
-  background:linear-gradient(90deg,transparent,rgba(0,229,255,.1) 30%,rgba(0,229,255,.1) 70%,transparent);
-  margin:20px 0;
-}
-
-/* ── LOGIN BUTTON ─────────────────────────────────── */
+.lo-input::placeholder { color: rgba(37,64,96,.55); font-size: 13px; }
+.lo-input:focus { border-color: rgba(0,229,255,.45); box-shadow: 0 0 0 3px rgba(0,229,255,.07), 0 0 20px rgba(0,229,255,.04); }
+.lo-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: rgba(37,64,96,.6); padding: 6px; border-radius: 6px; transition: color .2s, background .2s; touch-action: manipulation; }
+.lo-toggle:hover { color: var(--ac); background: rgba(0,229,255,.06); }
+.lo-toggle svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.lo-divider { height: 1px; margin: 20px 0; background: linear-gradient(90deg, transparent, rgba(0,229,255,.08) 30%, rgba(0,229,255,.08) 70%, transparent); }
 .lo-btn {
-  width:100%;padding:14px;border-radius:12px;
-  background:linear-gradient(135deg,rgba(0,229,255,.18),rgba(0,229,255,.08));
-  border:1.5px solid rgba(0,229,255,.35);
-  color:var(--ac);font-family:var(--ff);font-size:15px;font-weight:700;
-  letter-spacing:.5px;cursor:pointer;
-  position:relative;overflow:hidden;
-  transition:all .22s cubic-bezier(.4,0,.2,1);
+  width: 100%; padding: 15px;
+  background: linear-gradient(135deg, rgba(0,200,255,.18), rgba(0,140,200,.1));
+  border: 1.5px solid rgba(0,229,255,.35); border-radius: 10px;
+  color: var(--ac); font-size: 14px; font-weight: 700;
+  font-family: var(--ff); cursor: pointer; transition: all .2s;
+  letter-spacing: .5px; position: relative; overflow: hidden; touch-action: manipulation; margin-top: 4px;
 }
-.lo-btn::before{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(0,229,255,.25),rgba(0,229,255,.08));
-  opacity:0;transition:opacity .22s;
-}
-.lo-btn:hover{
-  border-color:rgba(0,229,255,.6);
-  box-shadow:0 0 24px rgba(0,229,255,.2),0 4px 16px rgba(0,0,0,.3);
-  transform:translateY(-1px);
-}
-.lo-btn:hover::before{opacity:1;}
-.lo-btn:active{transform:translateY(1px);}
-.lo-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.lo-btn::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0,229,255,.1), rgba(0,229,255,.03)); opacity: 0; transition: opacity .2s; }
+.lo-btn:hover { border-color: rgba(0,229,255,.6); transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,229,255,.15); }
+.lo-btn:hover::before { opacity: 1; }
+.lo-btn:active { transform: translateY(0); }
+.lo-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.lo-status { display: none; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-top: 12px; }
+.lo-status.show { display: flex; }
+.lo-status.error   { background: rgba(255,34,85,.08); border: 1px solid rgba(255,34,85,.2); color: #ff6688; animation: lo-shake .35s ease; }
+.lo-status.success { background: rgba(0,221,102,.08); border: 1px solid rgba(0,221,102,.2); color: var(--ok); }
+.lo-status.loading { background: rgba(0,229,255,.05); border: 1px solid rgba(0,229,255,.15); color: var(--ac); }
+@keyframes lo-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-7px)} 40%{transform:translateX(7px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+.lo-attempts { font-size: 11px; color: var(--txe); text-align: center; margin-top: 8px; }
+.lo-attempts.warn { color: #ff6688; font-weight: 600; }
+.lo-forgot { display: block; width: 100%; text-align: center; background: none; border: none; cursor: pointer; font-family: var(--ff); font-size: 12px; color: rgba(0,229,255,.4); text-decoration: underline; text-decoration-style: dotted; padding: 10px; border-radius: 6px; transition: color .2s; touch-action: manipulation; margin-top: 2px; }
+.lo-forgot:hover { color: var(--ac); }
+.lo-security-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 22px; }
+.lo-sec-tag { display: flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 6px; background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.05); font-size: 10px; color: var(--txe); }
+.lo-sec-tag span { color: var(--ok); }
+.lo-prog-wrap { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; opacity: 0; transition: opacity .3s; background: rgba(0,229,255,.05); }
+.lo-prog-wrap.active { opacity: 1; }
+.lo-prog-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--ac), var(--ac3)); transition: width .1s linear; box-shadow: 0 0 8px var(--ac); }
 
-/* ── STATUS ───────────────────────────────────────── */
-.lo-status{
-  margin-top:14px;padding:11px 14px;border-radius:10px;
-  font-family:var(--ff);font-size:13px;
-  display:none;align-items:center;gap:10px;font-weight:500;
-}
-.lo-status.show{display:flex;}
-.lo-status.error{
-  background:rgba(255,34,85,.08);border:1px solid rgba(255,34,85,.25);
-  color:#ff6688;animation:lo-shake .4s ease;
-}
-.lo-status.success{
-  background:rgba(0,221,102,.08);border:1px solid rgba(0,221,102,.25);
-  color:#44ee88;
-}
-.lo-status.loading{
-  background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.18);
-  color:var(--ac);
-}
-@keyframes lo-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+/* ── LOCKOUT ── */
+#lo-lockout { display: none; position: fixed; inset: 0; z-index: 9100; background: rgba(1,8,20,.97); flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+#lo-lockout.active { display: flex; }
+.lo-lk-icon { font-size: 56px; animation: lo-err-p 1.5s ease-in-out infinite; }
+@keyframes lo-err-p { 0%,100%{filter:drop-shadow(0 0 12px rgba(255,34,85,.5))} 50%{filter:drop-shadow(0 0 28px rgba(255,34,85,.9))} }
+.lo-lk-title { font-family: var(--fmo); font-size: 20px; font-weight: 800; color: var(--err); letter-spacing: 2px; }
+.lo-lk-msg { font-size: 14px; color: var(--txd); text-align: center; max-width: 300px; line-height: 1.6; }
+.lo-lk-msg span { color: var(--warn); font-weight: 700; }
+.lo-spinner { width: 14px; height: 14px; border: 2px solid rgba(0,229,255,.15); border-top-color: var(--ac); border-radius: 50%; animation: lo-spin .7s linear infinite; flex-shrink: 0; }
+@keyframes lo-spin { to { transform: rotate(360deg); } }
 
-/* ── ATTEMPTS ─────────────────────────────────────── */
-.lo-attempts{
-  margin-top:10px;font-family:var(--ff);font-size:12px;
-  color:var(--txd);text-align:right;min-height:18px;
-}
-.lo-attempts.warn{color:#ff6688;font-weight:600;}
-
-/* ── FOOTER ───────────────────────────────────────── */
-.lo-footer{
-  margin-top:22px;display:flex;justify-content:space-between;align-items:center;
-}
-.lo-footer-txt{font-family:var(--ff);font-size:11px;color:rgba(37,64,96,.6);}
-.lo-footer-dot{
-  width:7px;height:7px;border-radius:50%;
-  background:var(--ok);box-shadow:0 0 8px rgba(0,221,102,.6);
-  animation:lo-dot 2s ease-in-out infinite;
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  #login-overlay { flex-direction: column; }
+  .lo-left { flex: none; padding: 24px 20px 18px; }
+  .lo-hero { padding: 16px 0 12px; }
+  .lo-hero-title { font-size: 22px; }
+  .lo-hero-desc { display: none; }
+  .lo-stat-item { padding: 10px 14px; }
+  .lo-right { width: 100%; flex: 1; padding: 24px 20px 28px; border-left: none; border-top: 1px solid rgba(0,229,255,.08); }
+  .lo-clock-wrap { top: 16px; right: 16px; }
+  .lo-form-title { font-size: 20px; }
+  .lo-btn { padding: 14px; font-size: 13px; }
 }
 
-/* ── PROGRESS ─────────────────────────────────────── */
-.lo-prog-wrap{
-  position:absolute;bottom:0;left:0;right:0;height:3px;
-  overflow:hidden;border-radius:0 0 20px 20px;
-  opacity:0;transition:opacity .2s;
-}
-.lo-prog-wrap.active{opacity:1;}
-.lo-prog-bar{
-  height:100%;width:0;
-  background:linear-gradient(90deg,rgba(0,229,255,.4),var(--ac),rgba(0,229,255,.8));
-  box-shadow:0 0 8px var(--ac);
-  transition:width 1.2s cubic-bezier(.4,0,.2,1);
-}
-
-/* ── STATS ROW ────────────────────────────────────── */
-.lo-stats{
-  margin-top:18px;display:flex;gap:20px;justify-content:center;
-  font-family:var(--ff);font-size:11px;color:rgba(37,64,96,.6);
-}
-.lo-stats span{color:rgba(0,229,255,.5);font-weight:600;}
-
-/* ── CLOCK (topbar right) ─────────────────────────── */
-#lo-clock{
-  font-family:var(--fmo);font-size:14px;
-  color:var(--ac);letter-spacing:2px;
-  filter:drop-shadow(0 0 6px rgba(0,229,255,.3));
-}
-#lo-date-topbar{font-family:var(--fmo);font-size:10px;color:var(--txd);letter-spacing:1px;}
-
-/* ── LOCKOUT ──────────────────────────────────────── */
-#lo-lockout{
-  display:none;position:fixed;inset:0;z-index:10000;
-  background:rgba(1,5,14,.97);backdrop-filter:blur(16px);
-  flex-direction:column;align-items:center;justify-content:center;gap:18px;
-}
-#lo-lockout.active{display:flex;}
-.lo-lk-icon{font-size:56px;animation:lo-err-p 1.5s ease-in-out infinite;}
-@keyframes lo-err-p{0%,100%{filter:drop-shadow(0 0 8px rgba(255,34,85,.4))}50%{filter:drop-shadow(0 0 24px rgba(255,34,85,.9))}}
-.lo-lk-title{
-  font-family:var(--ff);font-size:22px;font-weight:800;
-  color:#ff4466;letter-spacing:1px;
-}
-.lo-lk-msg{
-  font-family:var(--ff);font-size:14px;color:var(--txd);
-  text-align:center;max-width:320px;line-height:1.8;
-}
-#lo-cd{color:var(--ac);font-weight:700;font-size:18px;}
-
-/* ── CORNER decorations (giảm nhẹ) ───────────────── */
-.lo-corner{position:absolute;width:32px;height:32px;opacity:.2;}
-.lo-c-tl{top:20px;left:20px;border-top:1px solid var(--ac);border-left:1px solid var(--ac);}
-.lo-c-tr{top:20px;right:20px;border-top:1px solid var(--ac);border-right:1px solid var(--ac);}
-.lo-c-bl{bottom:20px;left:20px;border-bottom:1px solid var(--ac);border-left:1px solid var(--ac);}
-.lo-c-br{bottom:20px;right:20px;border-bottom:1px solid var(--ac);border-right:1px solid var(--ac);}
-
-/* ── SPINNER ──────────────────────────────────────── */
-/* spinner */
-.lo-spinner{width:12px;height:12px;border:2px solid rgba(0,229,255,.2);border-top-color:var(--ac);border-radius:50%;animation:lo-spin .7s linear infinite;flex-shrink:0;}
-@keyframes lo-spin{to{transform:rotate(360deg)}}
 
 /* ══ NEW UX ADDITIONS (không ghi đè CSS gốc) ══════════════════ */
 
@@ -1569,105 +1469,120 @@ body {
 
 <div id="login-overlay">
 
-  <!-- TOPBAR -->
-  <div class="lo-topbar">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <div class="lo-logo"><div class="lo-logo-dot"></div> BMS</div>
-      <div style="font-family:var(--ff);font-size:12px;color:var(--txd);">Hệ thống quản lý tòa nhà</div>
+  <!-- ══ CỘT TRÁI — BRANDING ══ -->
+  <div class="lo-left">
+    <div class="lo-left-scan"></div>
+    <div class="lo-glow-br"></div>
+
+    <!-- Logo -->
+    <div class="lo-brand">
+      <div class="lo-brand-icon">🏢</div>
+      <div class="lo-brand-text">
+        <b>BMS v5.0</b>
+        Konia.vn · Hệ thống quản lý tòa nhà
+      </div>
     </div>
-    <div style="display:flex;align-items:center;gap:16px;">
-      <div id="lo-clock" style="font-family:var(--fmo);font-size:14px;color:var(--ac);letter-spacing:2px;">--:--:--</div>
+
+    <!-- Hero content -->
+    <div class="lo-hero">
+      <div class="lo-hero-badge">HỆ THỐNG ĐANG HOẠT ĐỘNG</div>
+      <div class="lo-hero-title">
+        Tòa nhà<br>
+        <span>Kim Thoa</span>
+      </div>
+      <div class="lo-hero-desc">
+        Hệ thống BMS tích hợp điều khiển chiếu sáng, điều hòa, điện, camera, báo cháy, cửa cuốn và thang máy — quản lý toàn bộ từ một màn hình duy nhất.
+      </div>
+      <div class="lo-stats-row">
+        <div class="lo-stat-item">
+          <div class="lo-stat-num">8</div>
+          <div class="lo-stat-lbl">Tầng</div>
+        </div>
+        <div class="lo-stat-item">
+          <div class="lo-stat-num">9</div>
+          <div class="lo-stat-lbl">Camera</div>
+        </div>
+        <div class="lo-stat-item">
+          <div class="lo-stat-num">36</div>
+          <div class="lo-stat-lbl">Thiết bị PCCC</div>
+        </div>
+        <div class="lo-stat-item">
+          <div class="lo-stat-num">24/7</div>
+          <div class="lo-stat-lbl">Giám sát</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer trái -->
+    <div class="lo-left-foot">
+      KTS Trịnh Quốc Việt · KS Vũ Quang Linh · ThS Vũ Trọng Hoàn
+    </div>
+  </div>
+
+  <!-- ══ CỘT PHẢI — FORM ĐĂNG NHẬP ══ -->
+  <div class="lo-right">
+
+    <!-- Đồng hồ -->
+    <div class="lo-clock-wrap">
+      <div class="lo-clock-time" id="lo-clock">--:--:--</div>
+      <div class="lo-clock-date" id="lo-date">--/--/----</div>
+    </div>
+
+    <!-- Form header -->
+    <div class="lo-form-header">
+      <div class="lo-form-tag">ĐĂNG NHẬP HỆ THỐNG</div>
+      <div class="lo-form-title">Xác thực truy cập</div>
+      <div class="lo-form-sub">Nhập mật khẩu để vào <b>BMS Hà Đông</b></div>
+    </div>
+
+    <!-- Input mật khẩu -->
+    <div class="lo-fg">
+      <label class="lo-label" for="lo-pw">Mật khẩu truy cập</label>
+      <div class="lo-iw">
+        <span class="lo-ico">
+          <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </span>
+        <input class="lo-input" type="password" id="lo-pw"
+          placeholder="Nhập mật khẩu..."
+          autocomplete="current-password">
+        <button class="lo-toggle" id="lo-toggle-pw" type="button" title="Hiện/ẩn mật khẩu">
+          <svg id="lo-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Nút đăng nhập -->
+    <button class="lo-btn" id="lo-btn" type="button">
+      Đăng nhập → Vào hệ thống
+    </button>
+
+    <!-- Trạng thái -->
+    <div class="lo-status" id="lo-status">
+      <span id="lo-s-icon"></span>
+      <span id="lo-s-msg"></span>
+    </div>
+    <div class="lo-attempts" id="lo-att"></div>
+
+    <!-- Quên mật khẩu -->
+    <button type="button" class="lo-forgot" id="lo-forgot-btn" onclick="loShowForgot()">
+      Quên mật khẩu?
+    </button>
+
+    <div class="lo-divider"></div>
+
+    <!-- Security tags -->
+    <div class="lo-security-row">
+      <div class="lo-sec-tag"><span>✓</span> Kết nối bảo mật</div>
+      <div class="lo-sec-tag"><span>✓</span> Mã hóa SSL</div>
+      <div class="lo-sec-tag"><span>✓</span> Hệ thống online</div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="lo-prog-wrap" id="lo-pw-wrap">
+      <div class="lo-prog-bar" id="lo-pb"></div>
     </div>
   </div>
 
-  <!-- CENTER -->
-  <div class="lo-center">
-    <div class="lo-corner lo-c-tl"></div>
-    <div class="lo-corner lo-c-tr"></div>
-    <div class="lo-corner lo-c-bl"></div>
-    <div class="lo-corner lo-c-br"></div>
-
-    <div class="lo-wrap">
-
-      <!-- TIÊU ĐỀ -->
-      <div class="lo-header">
-        <div class="lo-title">Xin chào! 👋</div>
-        <div class="lo-sub">Nhập mật khẩu để vào hệ thống <span>BMS v5</span></div>
-      </div>
-
-      <!-- CARD -->
-      <div class="lo-card">
-
-        <!-- AVATAR ICON -->
-        <div class="lo-shield-wrap">
-          <div class="lo-shield">🏢</div>
-        </div>
-
-        <!-- INPUT MẬT KHẨU -->
-        <div class="lo-fg">
-          <label class="lo-label" for="lo-pw">🔑 Mật khẩu truy cập</label>
-          <div class="lo-iw">
-            <span class="lo-ico">
-              <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            </span>
-            <input class="lo-input" type="password" id="lo-pw"
-              placeholder="Nhập mật khẩu vào đây..."
-              autocomplete="current-password">
-            <button class="lo-toggle" id="lo-toggle-pw" type="button" title="Hiện/ẩn mật khẩu">
-              <svg id="lo-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="lo-divider"></div>
-
-        <!-- NÚT ĐĂNG NHẬP -->
-        <button class="lo-btn" id="lo-btn" type="button">
-          🚀 Vào hệ thống
-        </button>
-
-        <!-- TRẠNG THÁI -->
-        <div class="lo-status" id="lo-status">
-          <span id="lo-s-icon"></span>
-          <span id="lo-s-msg"></span>
-        </div>
-        <div class="lo-attempts" id="lo-att"></div>
-
-        <!-- FOOTER -->
-        <div class="lo-footer">
-          <div class="lo-footer-txt">BMS v5.0 · KTS Trịnh Quốc Việt</div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <div class="lo-footer-txt">Hệ thống hoạt động</div>
-            <div class="lo-footer-dot"></div>
-          </div>
-        </div>
-
-        <!-- PROGRESS BAR -->
-        <div class="lo-prog-wrap" id="lo-pw-wrap">
-          <div class="lo-prog-bar" id="lo-pb"></div>
-        </div>
-      </div>
-
-      <!-- STATS -->
-      <!-- QUÊN MẬT KHẨU — ngoài card để không bị clip -->
-      <div style="text-align:center;margin-top:14px;">
-        <button type="button" id="lo-forgot-btn" onclick="loShowForgot()"
-          style="background:none;border:none;cursor:pointer;font-family:var(--ff);
-                 font-size:13px;color:rgba(0,229,255,.5);text-decoration:underline;
-                 text-decoration-style:dotted;padding:6px 12px;border-radius:6px;
-                 transition:color .2s;position:relative;z-index:10;">
-          🔑 Quên mật khẩu?
-        </button>
-      </div>
-
-      <div class="lo-stats">
-        <div>Ngày <span id="lo-date">--/--/----</span></div>
-        <div>Bảo mật <span style="color:var(--ok)">✓</span></div>
-        <div>Kết nối <span style="color:var(--ok)">✓</span></div>
-      </div>
-
-    </div>
-  </div>
 </div>
 <!-- ══ END LOGIN OVERLAY ══════════════════════════════════════════════ -->
 
@@ -2471,6 +2386,7 @@ const S = {
   fireSelFloor:'f1',
   fireCBLocked:false,      // đang cắt điện do cháy
   fireCBSnapshot:{},       // lưu trạng thái CB trước khi cắt để khôi phục
+  fireCamSnapshot:{},      // lưu trạng thái camera trước khi cắt do cháy
 };
 FLOORS.forEach(f=>{
   S.breakers[f.id]=true;
@@ -4070,6 +3986,7 @@ function resetFireSystem(){
   S.fireSilenced=false;
   FireAudio.stop();
   restorePowerAfterFire();
+  restoreCamerasAfterFire();
   log('ok','✅ Hệ thống báo cháy: ĐÃ RESET toàn bộ về trạng thái bình thường');
   bmsToast('Hệ thống báo cháy đã được RESET','ok','✅');
   fireElevatorRecall();
@@ -4129,6 +4046,7 @@ function setFireDevice(id, newState){
     bmsToast(`🔥 CHÁY — ${d.floor} · ${d.room}`,'err','🔥');
     reportTrackFire();
     cutPowerOnFire();
+    cutCamerasOnAlarmFloor(d.fid); // cắt camera tầng cháy ngay lập tức
   }else if(newState==='fault'){
     log('warn',`⚠ LỖI THIẾT BỊ — ${d.floor} · ${d.room} (${info.label})`);
     bmsToast(`⚠ Lỗi — ${d.floor} · ${d.room}`,'wrn','⚠️');
@@ -4146,8 +4064,8 @@ function resetFireFloor(fid){
   FIRE_DEVICES.filter(d=>d.fid===fid).forEach(d=>{S.fire[d.id]='normal';});
   log('ok',`✅ Xóa toàn bộ báo động tầng ${f?f.label:fid}`);
   bmsToast(`Đã xóa báo động ${f?f.label:'tầng'}`, 'ok','✅');
-  // Nếu toàn hệ thống không còn alarm → tắt còi + khôi phục điện
-  if(fireSystemStatus()!=='alarm'){ FireAudio.stop(); restorePowerAfterFire(); }
+  // Nếu toàn hệ thống không còn alarm → tắt còi + khôi phục điện + khôi phục camera
+  if(fireSystemStatus()!=='alarm'){ FireAudio.stop(); restorePowerAfterFire(); restoreCamerasAfterFire(); }
   fireElevatorRecall();
   updateFireIndicators();
   render();
@@ -4179,6 +4097,7 @@ function renderFire(){
           ${S.fireSilenced?'🔇 Còi đã tắt tạm thời · Đèn báo vẫn hoạt động':'📢 Còi + đèn chớp đang kêu toàn nhà'}
           · ${alarmDevs.length} thiết bị phát hiện cháy
           · <b style="color:var(--err)">⚡ Điện toàn nhà đã bị cắt</b>
+          · <b style="color:var(--warn)">📷 Camera khu vực cháy đã dừng ghi hình</b>
         </div>
       </div>
       <div style="display:flex;gap:8px;">
@@ -5670,7 +5589,32 @@ function toggleCBById(fid){
   render();
 }
 
-// Cắt toàn bộ CB khi phát hiện cháy
+// Cắt camera tầng đang cháy (lưu snapshot để khôi phục sau)
+function cutCamerasOnAlarmFloor(fid){
+  const f = FLOORS.find(x=>x.id===fid);
+  if(!f || !f.cameras.length) return;
+  f.cameras.forEach(c=>{
+    if(!(c.id in S.fireCamSnapshot)){
+      S.fireCamSnapshot[c.id] = S.cams[c.id]; // lưu trạng thái hiện tại
+    }
+    S.cams[c.id] = false; // tắt camera
+  });
+  log('warn',`📷 Camera ${f.label}: DỪNG GHI HÌNH do phát hiện cháy tại tầng này`);
+  bmsToast(`📷 Camera ${f.label} dừng ghi hình — khu vực cháy`,'wrn','📷');
+}
+
+// Khôi phục camera sau khi hết cháy
+function restoreCamerasAfterFire(){
+  if(!Object.keys(S.fireCamSnapshot).length) return;
+  let restored = 0;
+  Object.entries(S.fireCamSnapshot).forEach(([camId, wasOn])=>{
+    S.cams[camId] = wasOn;
+    if(wasOn) restored++;
+  });
+  S.fireCamSnapshot = {};
+  log('ok',`📷 Camera đã khôi phục ghi hình sau khi xử lý xong đám cháy (${restored} camera)`);
+  bmsToast(`📷 Camera đã khôi phục ghi hình`,'ok','📷');
+}
 function cutPowerOnFire(){
   if(S.fireCBLocked) return; // đã cắt rồi, không cắt lại
   // Lưu snapshot trạng thái hiện tại
